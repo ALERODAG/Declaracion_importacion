@@ -4,13 +4,49 @@ import tempfile
 import os
 import io
 
+
 #Importar funciones de otros modulos
 from main_simple import extraer_texto_pdf, separar_declaraciones, limpiar_lineas
 from main_simple import localizar_template  # for template search logic
 from productos import ProductExtractor
 from  procesador_universal import procesar_factura
 
+# ------------------------------------------
+# CONFIGURACION DE PAGINA Y ESTILOS
+# ------------------------------------------
+st.set_page_config(
+    page_title="Comparador de Importaciones",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
+# Inyectar CSS personalizado
+st.markdown("""
+<style>
+    /* Color de fondo principal */
+    .stApp {
+        background-color: #F0F4F8;
+    }
+    
+    /* Color azul para títulos (h1-h6) */
+    h1, h2, h3, h4, h5, h6, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
+        color: #1E3A8A !important; /* Azul oscuro profesional */
+    }
+    
+    /* Color azul para labels de widgets (inputs, selects) */
+    .stMarkdown label, div[data-testid="stWidgetLabel"] label, label[data-testid="stWidgetLabel"] {
+        color: #1E3A8A !important;
+        font-weight: bold;
+    }
+    
+    /* Ajuste de contenedores para dar sensación de tarjetas */
+    div[data-testid="stExpander"] {
+        background-color: #ffffff;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # ------------------------------------------
 # CONFIG: template path (auto‑fallback-ready)
@@ -226,9 +262,9 @@ if subir_declaracion:
         
         # Mostrar solo columnas seleccionadas
         if columnas_decl_seleccionadas:
-            st.dataframe(df_decl_display[columnas_decl_seleccionadas])
+            st.dataframe(df_decl_display[columnas_decl_seleccionadas], use_container_width=True)
         else:
-            st.dataframe(df_decl_display)
+            st.dataframe(df_decl_display, use_container_width=True)
         
         # Botón de descarga para declaraciones
         if not df_decl.empty:
@@ -262,9 +298,9 @@ if subir_declaracion:
         
         # Mostrar solo columnas seleccionadas
         if columnas_prod_seleccionadas:
-            st.dataframe(df_prod[columnas_prod_seleccionadas])
+            st.dataframe(df_prod[columnas_prod_seleccionadas], use_container_width=True)
         else:
-            st.dataframe(df_prod)
+            st.dataframe(df_prod, use_container_width=True)
         
         # Botón de descarga para productos
         if not df_prod.empty:
@@ -320,9 +356,9 @@ if subir_declaracion:
                 )
                 
                 if columnas_seleccionadas:
-                    st.dataframe(df[columnas_seleccionadas])
+                    st.dataframe(df[columnas_seleccionadas], use_container_width=True)
                 else:
-                    st.dataframe(df)
+                    st.dataframe(df, use_container_width=True)
                 
                 # Guardar Excel con estructura dinámica
                 folder = os.path.join(os.getcwd(), "PDF_A_LEER", "EXCEL_PDF_LEIDOS")
