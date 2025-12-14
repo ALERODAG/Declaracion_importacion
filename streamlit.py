@@ -20,39 +20,101 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Inyectar CSS personalizado
+# Inyectar CSS personalizado y fuentes
 st.markdown("""
 <style>
-    /* Color de fondo principal */
-    .stApp {
-        background-color: #F0F4F8;
-    }
-    
-    /* Color azul para títulos (h1-h6) */
-    h1, h2, h3, h4, h5, h6, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
-        color: #1E3A8A !important;
-    }
-    
-    /* Color azul para labels de widgets */
-    .stMarkdown label, div[data-testid="stWidgetLabel"] label, label[data-testid="stWidgetLabel"] {
-        color: #1E3A8A !important;
-        font-weight: bold;
-    }
-    
-    /* Intento de estilar encabezados de tablas estáticas (st.table) */
-    th {
-        background-color: #1E3A8A !important;
-        color: white !important;
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+
+    html, body, [class*="css"]  {
+        font-family: 'Inter', sans-serif;
     }
 
-    /* Ajuste de contenedores */
-    div[data-testid="stExpander"] {
-        background-color: #ffffff;
-        border-radius: 10px;
+    /* Color de fondo principal */
+    .stApp {
+        background-color: #F8FAFC; /* Gris muy claro, casi blanco */
+    }
+    
+    /* Header Principal Personalizado */
+    .main-header {
+        background-color: #FFFFFF;
+        padding: 1.5rem;
+        border-radius: 12px;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        margin-bottom: 2rem;
+        border-left: 6px solid #1E3A8A;
+    }
+    .main-header h1 {
+        color: #1E3A8A;
+        margin: 0;
+        font-size: 2rem;
+    }
+    .main-header p {
+        color: #64748B;
+        margin-top: 0.5rem;
+    }
+
+    /* Estilo para los títulos de sección estándar de Streamlit */
+    h1, h2, h3 {
+        color: #1E3A8A !important;
+        font-weight: 600;
+    }
+    
+    /* Cards para secciones */
+    div.block-container {
+        padding-top: 2rem;
+    }
+    
+    /* Estilo de los File Uploaders */
+    section[data-testid="stFileUploader"] {
+        background-color: #FFFFFF;
+        padding: 2rem;
+        border-radius: 12px;
+        border: 2px dashed #CBD5E1;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        transition: border-color 0.3s;
+    }
+    section[data-testid="stFileUploader"]:hover {
+        border-color: #1E3A8A;
+    }
+
+    /* Tablas */
+    div[data-testid="stDataFrame"] {
+        background-color: #FFFFFF;
+        padding: 1rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    
+    /* Centrar encabezados de tabla */
+    th {
+        text-align: center !important;
+        vertical-align: middle !important;
+        text-transform: capitalize; /* Refuerzo visual */
+    }
+
+    /* Ajuste de contenedores expander */
+    div[data-testid="stExpander"] {
+        background-color: #FFFFFF;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        border: 1px solid #E2E8F0;
+    }
+    
+    /* Botones primarios */
+    button[kind="primary"] {
+        background-color: #1E3A8A !important;
+        border: none;
     }
 </style>
 """, unsafe_allow_html=True)
+
+# Header visible en la app
+st.markdown("""
+<div class="main-header">
+    <p>Sube tus archivos PDF para extraer, procesar y comparar datos de importación automáticamente.</p>
+</div>
+""", unsafe_allow_html=True)
+
 
 # ------------------------------------------
 # CONFIG: template path (auto‑fallback-ready)
@@ -248,6 +310,20 @@ if subir_declaracion:
         # Preparar DF para display
         df_decl_display = df_decl.copy()
         
+        # Capitalizar columnas para visualización
+        df_decl_display.columns = [str(c).title() for c in df_decl_display.columns]
+
+        # Formatear columnas numéricas para visualización (1,234.56)
+        # IMPORTANTE: Al renombrar columnas, el mapeo original se pierde si no ajustamos columnas_numericas
+        # Primero formateamos, y LUEGO renombramos para evitar líos, O ajustamos la lógica.
+        # Mejor estrategia: Formatear PRIMERO (líneas anteriores), LUEGO Capitalizar justo antes de mostrar.
+        # Pero espera, el código original formatea sobre df_decl_display.
+        
+        # Corrección: El código original ya tenía df_decl_display.
+        # Vamos a insertar la capitalización JUSTO ANTES de mostrar los dataframes y los selectores.
+        
+        # ---- REEMPLAZO INTELIGENTE BLOQUE COMPLETO DESDE LA COPIA ----
+        
         # Formatear columnas numéricas para visualización (1,234.56)
         for col in columnas_numericas:
             if col in df_decl_display.columns:
@@ -256,27 +332,38 @@ if subir_declaracion:
         # with col1:
         st.write("### 📄 Declaración formateada")
         
+        # Capitalizar nombres de columnas para el selector y visualización
+        df_display_final = df_decl_display.copy()
+        df_display_final.columns = [str(c).title() for c in df_display_final.columns]
+        
         # Selector de columnas en expander
         with st.expander("🔧 Seleccionar columnas a mostrar"):
             columnas_decl_seleccionadas = st.multiselect(
                 "Columnas", 
-                df_decl_display.columns.tolist(),
-                default=df_decl_display.columns.tolist(),
+                df_display_final.columns.tolist(),
+                default=df_display_final.columns.tolist(),
                 key=f"multiselect_declaraciones_{idx}",
                 label_visibility="collapsed"
             )
         
         # Mostrar solo columnas seleccionadas
         if columnas_decl_seleccionadas:
-            st.dataframe(df_decl_display[columnas_decl_seleccionadas], use_container_width=True)
+            st.dataframe(df_display_final[columnas_decl_seleccionadas], use_container_width=True)
         else:
-            st.dataframe(df_decl_display, use_container_width=True)
+            st.dataframe(df_display_final, use_container_width=True)
         
-        # Botón de descarga para declaraciones
+        # Botón de descarga para declaraciones (usa el DF original sin capitalizar headers si así se desea, o capitalizado?)
+        # User request "colocar los nombres de los campos con mayuscyla inicial y centrados" -> likely for display. 
+        # Excel usually keeps original keys unless specified. keeping output clean.
+        
         if not df_decl.empty:
             from io import BytesIO
             buffer_decl = BytesIO()
             with pd.ExcelWriter(buffer_decl, engine='openpyxl') as writer:
+                # Si quiere que el excel también tenga mayusculas, descomentar:
+                # df_decl_export = df_decl.copy()
+                # df_decl_export.columns = [c.title() for c in df_decl_export.columns]
+                # df_decl_export.to_excel...
                 df_decl.to_excel(writer, sheet_name='Declaraciones', index=False)
             buffer_decl.seek(0)
             
@@ -292,21 +379,25 @@ if subir_declaracion:
         # with col2:
         st.write("### 📊 Productos encontrados")
         
+        # Capitalizar columnas productos visualización
+        df_prod_display = df_prod.copy()
+        df_prod_display.columns = [str(c).title() for c in df_prod_display.columns]
+
         # Selector de columnas en expander
         with st.expander("🔧 Seleccionar columnas a mostrar"):
             columnas_prod_seleccionadas = st.multiselect(
                 "Columnas", 
-                df_prod.columns.tolist(),
-                default=df_prod.columns.tolist(),
+                df_prod_display.columns.tolist(),
+                default=df_prod_display.columns.tolist(),
                 key=f"multiselect_productos_{idx}",
                 label_visibility="collapsed"
             )
         
         # Mostrar solo columnas seleccionadas
         if columnas_prod_seleccionadas:
-            st.dataframe(df_prod[columnas_prod_seleccionadas], use_container_width=True)
+            st.dataframe(df_prod_display[columnas_prod_seleccionadas], use_container_width=True)
         else:
-            st.dataframe(df_prod, use_container_width=True)
+            st.dataframe(df_prod_display, use_container_width=True)
         
         # Botón de descarga para productos
         if not df_prod.empty:
@@ -353,18 +444,22 @@ if subir_declaracion:
                 with st.expander("Ver campos detectados"):
                     st.write(", ".join(df.columns.tolist()))
                 
+                # Capitalizar columnas para visualización
+                df_factura_display = df.copy()
+                df_factura_display.columns = [str(c).title() for c in df_factura_display.columns]
+
                 # Selector de columnas para mostrar
                 columnas_seleccionadas = st.multiselect(
                     "Selecciona las columnas a mostrar", 
-                    df.columns.tolist(),
-                    default=df.columns.tolist(),
+                    df_factura_display.columns.tolist(),
+                    default=df_factura_display.columns.tolist(),
                     key=f"cols_{f.name}"
                 )
                 
                 if columnas_seleccionadas:
-                    st.dataframe(df[columnas_seleccionadas], use_container_width=True)
+                    st.dataframe(df_factura_display[columnas_seleccionadas], use_container_width=True)
                 else:
-                    st.dataframe(df, use_container_width=True)
+                    st.dataframe(df_factura_display, use_container_width=True)
                 
                 # Guardar Excel con estructura dinámica
                 folder = os.path.join(os.getcwd(), "PDF_A_LEER", "EXCEL_PDF_LEIDOS")

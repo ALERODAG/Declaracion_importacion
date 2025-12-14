@@ -1,7 +1,11 @@
 [theme]
 base = "light"
-primaryColor = "#1E3A8A"
-backgroundColor = "#F0F4F8"
-secondaryBackgroundColor = "#FFFFFF"
-textColor = "#262730"
-font = "sans serif"
+#Color de los botones
+primaryColor = "#106e7dff"
+#backgroundColor = "rgba(8, 197, 245, 0.91)"
+# color de los uploaders
+secondaryBackgroundColor = "rgba(8, 197, 245, 0.91)"
+#textColor = "#fafafa"
+font = "arials"
+fontSize = "12px"
+
