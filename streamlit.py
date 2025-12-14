@@ -30,16 +30,22 @@ st.markdown("""
     
     /* Color azul para títulos (h1-h6) */
     h1, h2, h3, h4, h5, h6, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
-        color: #1E3A8A !important; /* Azul oscuro profesional */
+        color: #1E3A8A !important;
     }
     
-    /* Color azul para labels de widgets (inputs, selects) */
+    /* Color azul para labels de widgets */
     .stMarkdown label, div[data-testid="stWidgetLabel"] label, label[data-testid="stWidgetLabel"] {
         color: #1E3A8A !important;
         font-weight: bold;
     }
     
-    /* Ajuste de contenedores para dar sensación de tarjetas */
+    /* Intento de estilar encabezados de tablas estáticas (st.table) */
+    th {
+        background-color: #1E3A8A !important;
+        color: white !important;
+    }
+
+    /* Ajuste de contenedores */
     div[data-testid="stExpander"] {
         background-color: #ffffff;
         border-radius: 10px;
