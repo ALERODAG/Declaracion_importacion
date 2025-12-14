@@ -16,7 +16,6 @@ from  procesador_universal import procesar_factura
 # CONFIG: template path (auto‑fallback-ready)
 # ------------------------------------------
 TEMPLATE_CANDIDATES = [
-    r"C:/Users/asus/Documents/Declaracion-de-importacion_V_290/RESULTADO_FORMATO_DECLARACION.xlsx",
     os.path.join(os.getcwd(), "RESULTADO_FORMATO_DECLARACION.xlsx"),
     os.path.join(os.getcwd(), "plantillas", "RESULTADO_FORMATO_DECLARACION.xlsx"),
 ]

@@ -33,8 +33,8 @@ Un sistema para comparar archivos Excel de declaraciones de importación y factu
 
 1. Clonar el repositorio:
 ```bash
-git clone <url-del-repositorio>
-cd declaracion-de-importacion
+git clone https://github.com/ALERODAG/Declaracion_importacion.git
+cd Declaracion_importacion
 ```
 
 2. Instalar dependencias:
@@ -45,7 +45,12 @@ pip install -r requirements.txt
 ## Uso Básico
 
 # Activar el entorno
-& c:/Users/asus/Documents/Declaracion-de-importacion_V_290/declaracion_importacion/Scripts/Activate.ps1
+# En Windows (PowerShell)
+.\declaracion_importacion\Scripts\Activate.ps1
+
+# O crear un nuevo entorno virtual si es necesario:
+# python -m venv venv
+# .\venv\Scripts\Activate.ps1
 
 # EJECUTAR EL SCRIPT
 streamlit run streamlit.py
@@ -76,7 +81,7 @@ python comparacion.py
 
 El sistema busca archivos Excel en el directorio:
 ```
-D:\DESARROLLO DE SOFTWARE\PDF_A_LEER\EXCEL_PDF_LEIDOS
+./PDF_A_LEER/EXCEL_PDF_LEIDOS
 ```
 
 Los resultados se guardan automáticamente en `resultado_comparacion.xlsx` en el mismo directorio.
