@@ -76,6 +76,20 @@ st.markdown("""
     section[data-testid="stFileUploader"]:hover {
         border-color: #1E3A8A;
     }
+    
+    /* Forzar texto oscuro en el uploader incluso si el tema base falla */
+    section[data-testid="stFileUploader"] small, 
+    section[data-testid="stFileUploader"] span,
+    section[data-testid="stFileUploader"] div {
+        color: #334155 !important; 
+    }
+    
+    /* Hack para el botón interno del uploader para que se vea bien */
+    section[data-testid="stFileUploader"] button {
+        background-color: #F1F5F9;
+        color: #1E3A8A;
+        border-color: #CBD5E1;
+    }
 
     /* Tablas */
     div[data-testid="stDataFrame"] {
@@ -90,6 +104,10 @@ st.markdown("""
         text-align: center !important;
         vertical-align: middle !important;
         text-transform: capitalize; /* Refuerzo visual */
+        color: #1E3A8A !important;
+    }
+    td {
+        color: #1E293B !important;
     }
 
     /* Ajuste de contenedores expander */
@@ -111,7 +129,7 @@ st.markdown("""
 # Header visible en la app
 st.markdown("""
 <div class="main-header">
-    <p>Sube tus archivos PDF para extraer, procesar y comparar datos de importación automáticamente.</p>
+    <p>Sube tus archivos PDF para extraer, procesar y comparar datos de importación automáticamente. <span style="font-size:0.8rem; color:#94a3b8; float:right;">v2.9.1 (Light Fix)</span></p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -142,13 +160,7 @@ def procesar_pdf_filelike(file):
 
     # Extraer texto completo
     texto = extraer_texto_pdf(temp_path)
-    print(texto) 
-    
-
-
-   
-
-    # Separar declaraciones usando lógica original
+    # print(texto) # DEBUG removed for production
     declaraciones = separar_declaraciones(texto)
     
     
