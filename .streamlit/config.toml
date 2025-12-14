@@ -1,10 +1,11 @@
 [theme]
 base = "light"
-#Color de los botones
-#primaryColor = "#106e7dff"
-backgroundColor = "rgba(4, 23, 47, 1)"
-# color de los uploaders
-secondaryBackgroundColor = "rgba(42, 63, 88, 0.95)"
-textColor = "#b4a8a8ff"
+# Color principal (Botones, inputs activos)
+primaryColor = "#1E3A8A"
+# Color de fondo principal
+backgroundColor = "#F8FAFC"
+# Color de fondo secundario (Sidebar, widgets)
+secondaryBackgroundColor = "#F1F5F9"
+# Color del texto
+textColor = "#1E293B"
 font = "sans serif"
-# font = "arials" causes issues sometimes, reverting to standard or compatible
