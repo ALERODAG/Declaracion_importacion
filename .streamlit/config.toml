@@ -1,10 +1,10 @@
 [theme]
 base = "light"
 #Color de los botones
-primaryColor = "#106e7dff"
-backgroundColor = "rgba(12, 137, 254, 1)"
+#primaryColor = "#106e7dff"
+backgroundColor = "rgba(4, 23, 47, 1)"
 # color de los uploaders
 secondaryBackgroundColor = "rgba(42, 63, 88, 0.95)"
-textColor = "#fafafa"
+textColor = "#b4a8a8ff"
 font = "sans serif"
 # font = "arials" causes issues sometimes, reverting to standard or compatible

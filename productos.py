@@ -318,8 +318,11 @@ class ProductExtractor:
             text, flags=re.IGNORECASE,
         )
         if m:
-            fields['Pais_Origen'] = m.group(1).strip()
-            fields['Codigo_Pais_Origen'] = m.group(2).strip()
+            # Guárdalo combinado como pide el usuario: "JAPON - 399"
+            p = m.group(1).strip()
+            c = m.group(2).strip()
+            fields['Pais_Origen'] = f"{p} - {c}"
+            fields['Codigo_Pais_Origen'] = c
         else:
             m2 = re.search(r'PA[IÍ]S\s*ORIGEN\s*:\s*([A-ZÁÉÍÓÚÜÑ ]+)', text, flags=re.IGNORECASE)
             if m2:
@@ -382,6 +385,11 @@ class ProductExtractor:
             
             if field_name and value:
                 fields[field_name] = value
+
+        # ===== PASO 2.B: Extracción Específica (Refuerzo) =====
+        # Si no se encontró País de Origen con la genérica o quedó mal parseado, intentamos la específica
+        if 'Pais_Origen' not in fields:
+             self._extract_pais_origen(fields_text, fields)
 
         # ===== PASO 3: Post-procesamiento de campos específicos =====
         
@@ -475,12 +483,22 @@ class ProductExtractor:
         if 'Referencia' in fields:
             fields['Referencia'] = self._dedupe_ref(fields['Referencia'])
         
-        # Extraer código de país si está en formato "PAÍS - CÓDIGO" (y no se procesó arriba)
-        if 'Pais_Origen' in fields and 'Codigo_Pais_Origen' not in fields:
+        # Extraer código de país si está en formato "PAÍS - CÓDIGO"
+        # MODIFICADO: El usuario quiere "JAPON - 399" todo junto en Pais_Origen.
+        # Si ya viene así, lo dejamos o lo estandarizamos.
+        if 'Pais_Origen' in fields:
+            # Intentar limpiar espacios alrededor del guión
             m = re.search(r'^(.+?)\s*[-–—]\s*(\d{2,3})\.?$', fields['Pais_Origen'])
             if m:
-                fields['Pais_Origen'] = m.group(1).strip()
-                fields['Codigo_Pais_Origen'] = m.group(2).strip()
+                # Estandarizar a "PAIS - CODIGO"
+                pais = m.group(1).strip()
+                codigo = m.group(2).strip()
+                fields['Pais_Origen'] = f"{pais} - {codigo}"
+                # Opcional: guardar el código aparte por si acaso
+                fields['Codigo_Pais_Origen'] = codigo
+            elif 'Codigo_Pais_Origen' in fields and fields['Codigo_Pais_Origen']:
+                 # Si vino separado desde _extract_pais_origen, unirlos
+                 fields['Pais_Origen'] = f"{fields['Pais_Origen']} - {fields['Codigo_Pais_Origen']}"
         
         # Normalizar CANTIDAD - extraer solo el número
         if 'Cantidad' in fields:
