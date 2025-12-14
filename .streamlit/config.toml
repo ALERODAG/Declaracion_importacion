@@ -2,10 +2,9 @@
 base = "light"
 #Color de los botones
 primaryColor = "#106e7dff"
-#backgroundColor = "rgba(8, 197, 245, 0.91)"
+backgroundColor = "rgba(12, 137, 254, 1)"
 # color de los uploaders
-secondaryBackgroundColor = "rgba(8, 197, 245, 0.91)"
-#textColor = "#fafafa"
-font = "arials"
-fontSize = "12px"
-
+secondaryBackgroundColor = "rgba(42, 63, 88, 0.95)"
+textColor = "#fafafa"
+font = "sans serif"
+# font = "arials" causes issues sometimes, reverting to standard or compatible
