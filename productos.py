@@ -479,8 +479,31 @@ class ProductExtractor:
                              fields['Unidad'] = 'UND' 
                     break
         
-        # Normalizar REFERENCIA (eliminar duplicados como "ABC-ABC")
+        # Normalizar REFERENCIA (eliminar duplicados y limpiar UND)
         if 'Referencia' in fields:
+            # 1. Eliminar palabras reservadas de cantidad/unidad que se colaron (SOLICITUD DE USUARIO)
+            # Ejemplo: "REF123 10 UND" -> Referencia="REF123", Cantidad="10" (si falta)
+            ref_val = fields['Referencia']
+            
+            # Patrón: (Numeros opcionales) + Espacio opcional + (UND/UNID/PCS)
+            # Group 1: Cantidad
+            m_und = re.search(r'\b(\d+(?:[.,]\d+)?)?\s*(?:UND|UNID|UNIDADES|PCS|PZA|PIEZA)\b', ref_val, re.IGNORECASE)
+            
+            if m_und:
+                qty_found = m_und.group(1)
+                
+                # Si no hay cantidad, usamos la encontrada
+                if 'Cantidad' not in fields and qty_found:
+                    fields['Cantidad'] = qty_found
+                
+                # Si no hay unidad, asumimos UND
+                if 'Unidad' not in fields:
+                    fields['Unidad'] = 'UND'
+                
+                # Limpiar la referencia
+                ref_val = re.sub(r'\b(\d+(?:[.,]\d+)?)?\s*(?:UND|UNID|UNIDADES|PCS|PZA|PIEZA)\b', '', ref_val, flags=re.IGNORECASE)
+                fields['Referencia'] = ref_val.strip(' ,.-')
+
             fields['Referencia'] = self._dedupe_ref(fields['Referencia'])
         
         # Extraer código de país si está en formato "PAÍS - CÓDIGO"

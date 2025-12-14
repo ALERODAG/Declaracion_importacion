@@ -235,8 +235,33 @@ subir_declaracion = st.file_uploader("Sube PDFs", type=["pdf"], accept_multiple_
 
 if subir_declaracion:
     for idx, f in enumerate(subir_declaracion):
-
-        df_decl, df_prod, texto = procesar_pdf_filelike(f)
+        
+        # --------------------------------------------------------
+        # GESTIÓN DE ESTADO (PERSISTENCIA)
+        # --------------------------------------------------------
+        # Usamos nombre + tamaño como clave única simple
+        file_key = f"data_{f.name}_{f.size}"
+        
+        if file_key not in st.session_state:
+            with st.spinner(f"Procesando {f.name}..."):
+                # Procesar PDF (solo si no está en cache)
+                d_decl, d_prod, d_text = procesar_pdf_filelike(f)
+                
+                # Inicializar columna Observaciones si no existe
+                if "Observaciones" not in d_prod.columns:
+                    d_prod["Observaciones"] = ""
+                
+                st.session_state[file_key] = {
+                    "decl": d_decl,
+                    "prod": d_prod,
+                    "text": d_text
+                }
+        
+        # Recuperar datos desde el estado
+        data_stored = st.session_state[file_key]
+        df_decl = data_stored["decl"]
+        df_prod = data_stored["prod"]
+        texto = data_stored["text"]
 
         # Función para convertir correctamente los números (Lógica robusta)
         import re
@@ -404,12 +429,96 @@ if subir_declaracion:
                 key=f"multiselect_productos_{idx}",
                 label_visibility="collapsed"
             )
+
+        # ---------------------------------------------------------
+        # BUSQUEDA PERSONALIZADA CON HIGHLIGHT AZUL
+        # ---------------------------------------------------------
+        search_term = st.text_input(
+            "🔍 Buscar en productos", 
+            placeholder="Escribe para buscar (ej. referencia, país...)",
+            key=f"search_prod_{idx}"
+        ).strip()
         
-        # Mostrar solo columnas seleccionadas
-        if columnas_prod_seleccionadas:
-            st.dataframe(df_prod_display[columnas_prod_seleccionadas], use_container_width=True)
-        else:
-            st.dataframe(df_prod_display, use_container_width=True)
+        # Filtrar datos basado en búsqueda
+        df_view = df_prod_display[columnas_prod_seleccionadas] if columnas_prod_seleccionadas else df_prod_display
+        
+        if search_term:
+            # 1. Filtrar filas (case insensitive)
+            mask = df_view.astype(str).apply(
+                lambda x: x.str.contains(search_term, case=False)
+            ).any(axis=1)
+            df_view = df_view[mask]
+            
+            # 2. Resaltar celdas coincidentes (Azul #1E3A8A)
+            try:
+                # Usar applymap para pandas < 2.1, map para > 2.1 (Streamlit maneja Styler)
+                def highlight_matches(val):
+                    s_val = str(val) if val is not None else ""
+                    if search_term.lower() in s_val.lower():
+                        return 'background-color: #1E3A8A; color: white; font-weight: bold'
+                    return ''
+                
+                # Aplicar estilo
+                df_view = df_view.style.applymap(highlight_matches)
+            except Exception:
+                # Fallback si falla el styling (ej. version antigua pandas)
+                pass
+
+        # Mostrar solo columnas seleccionadas y manejar selección
+        # df_view ya está filtrado y estilado si aplica
+        
+        # Intentar usar on_select (Streamlit >= 1.35)
+        try:
+            event = st.dataframe(
+                df_view,
+                use_container_width=True,
+                on_select="rerun",
+                selection_mode="single-row",
+                key=f"df_prod_sel_{idx}"
+            )
+            
+            # Si hay selección, mostrar editor DEBAJO de la tabla (No modal)
+            if event.selection.rows:
+                selected_idx_view = event.selection.rows[0]
+                
+                # Obtener mapeo al indice original
+                row_data_view = df_view.iloc[selected_idx_view]
+                original_index = row_data_view.name 
+                row_original = df_prod.loc[original_index]
+                
+                # -----------------------------------------------------
+                # AREA DE EDICIÓN INDEPENDIENTE
+                # -----------------------------------------------------
+                st.markdown("---")
+                with st.container(border=True):
+                    st.write(f"✏️ **Editando observación para:** {row_original.get('Producto', 'Producto')} - *{row_original.get('Referencia', 'SN')}*")
+                    
+                    # Usamos un key único combinando file_key e indice para el text_area
+                    # Importante: Inicializar value con el valor actual del session_state
+                    current_obs_val = row_original.get("Observaciones", "")
+                    if pd.isna(current_obs_val): current_obs_val = ""
+                    
+                    new_obs_val = st.text_area(
+                        "Observación", 
+                        value=str(current_obs_val), 
+                        height=100, 
+                        key=f"obs_input_{file_key}_{original_index}",
+                        label_visibility="collapsed",
+                        placeholder="Escribe aquí la observación para este producto..."
+                    )
+                    
+                    if st.button("💾 Guardar Observación", key=f"btn_save_{file_key}_{original_index}", type="primary"):
+                        # Guardar en session_state
+                        st.session_state[file_key]["prod"].at[original_index, "Observaciones"] = new_obs_val
+                        st.success("✅ Observación guardada")
+                        # No hacemos rerun forzoso para no perder el foco visual bruscamente, o sí para ver el cambio reflejado en tabla?
+                        # Si reruneamos, la tabla se actualiza.
+                        st.rerun()
+
+        except TypeError:
+            # Fallback para versiones anteriores
+            st.dataframe(df_view, use_container_width=True)
+            st.info("ℹ️ Actualiza Streamlit para habilitar la edición de observaciones.")
         
         # Botón de descarga para productos
         if not df_prod.empty:
