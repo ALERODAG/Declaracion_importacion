@@ -1,373 +1,226 @@
 #!/usr/bin/env python3
-"""
-Sistema simplificado de procesamiento de declaraciones de importación.
-Extrae información de la primera página únicamente.
-"""
-
-import json
+# -*- coding: utf-8 -*-
+#SCRIPT MAIN_SIMPLE
+import os
 import re
 import pandas as pd
-from pathlib import Path
-from datetime import datetime
-from typing import List, Dict, Any
+from productos import ProductExtractor  # Asegúrate de que productos.py esté accesible
 
+# =========================
+# Utilidades de extracción
+# =========================
 
-def extract_text_from_first_page(pdf_file: str) -> str:
-    """Extrae texto de la primera página del PDF usando PyMuPDF con OCR como mejora."""
+def extraer_texto_pdf(ruta_pdf: str) -> str:
+    import fitz  # PyMuPDF
+    texto = ""
     try:
-        import fitz  # PyMuPDF
-
-        # Abrir el PDF
-        doc = fitz.open(pdf_file)
-
-        # Verificar que el documento tenga páginas válidas
-        if len(doc) > 0:
-            # Extraer texto de la primera página
-            first_page = doc.load_page(0)
-            page_text = first_page.get_text()
-
-            if page_text and len(page_text.strip()) > 100:  # Si hay texto suficiente
-                return page_text.strip()
-            else:
-                # Si no hay texto suficiente, intentar OCR
-                print("Texto insuficiente, aplicando OCR...")
-                return extract_text_with_ocr(first_page)
-
-        doc.close()
-        return ""
-    except ImportError:
-        print("Error: PyMuPDF (fitz) no está instalado")
-        return ""
+        with fitz.open(ruta_pdf) as doc:
+            for page in doc:
+                texto += page.get_text("text")
     except Exception as e:
-        print(f"Error extrayendo texto con PyMuPDF: {e}")
-        return ""
+        print(f"Error al leer {ruta_pdf}: {e}")
+    return texto
 
-
-def extract_text_with_ocr(page) -> str:
-    """Extrae texto usando OCR con EasyOCR como método alternativo."""
-    try:
-        import fitz  # PyMuPDF
-
-        # Convertir página a imagen
-        pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))  # Escalar 2x para mejor OCR
-
-        # Convertir pixmap a bytes
-        img_data = pix.tobytes("png")
-
-        # Guardar imagen temporalmente para OCR
-        import tempfile
-        import os
-
-        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as temp_file:
-            temp_file.write(img_data)
-            temp_file_path = temp_file.name
-
-        try:
-            # Aplicar OCR usando EasyOCR
-            import easyocr
-
-            # Crear reader para español e inglés
-            reader = easyocr.Reader(['es', 'en'])
-
-            # Aplicar OCR
-            results = reader.readtext(temp_file_path)
-
-            # Combinar resultados de OCR
-            text_lines = []
-            for result in results:
-                if len(result) >= 3:  # Verificar que tenemos (bbox, text, confidence)
-                    bbox, text, confidence = result
-                    # Verificar que confidence es un número y mayor a 0.5
-                    if isinstance(confidence, (int, float)) and confidence > 0.5:
-                        text_lines.append(text)
-
-            final_text = '\n'.join(text_lines)
-            return final_text.strip() if final_text else ""
-
-        except ImportError as e:
-            print(f"Error: EasyOCR no disponible - {e}")
-            return ""
-        except Exception as e:
-            print(f"Error aplicando OCR con EasyOCR: {e}")
-            return ""
-        finally:
-            # Limpiar archivo temporal
-            if os.path.exists(temp_file_path):
-                os.unlink(temp_file_path)
-
-    except ImportError as e:
-        print(f"Error: PyMuPDF no disponible - {e}")
-        return ""
-    except Exception as e:
-        print(f"Error aplicando OCR: {e}")
-        return ""
-
-def extract_text_from_all_pages(pdf_file: str) -> str:
-    """Extrae texto de todas las páginas del PDF usando PyMuPDF, con OCR de respaldo cuando el texto es insuficiente en una página."""
-    try:
-        import fitz  # PyMuPDF
-
-        doc = fitz.open(pdf_file)
-        texts = []
-
-        for page_index in range(len(doc)):
-            try:
-                page = doc.load_page(page_index)
-                page_text = page.get_text()
-
-                # Si la página tiene texto suficiente, úsalo; si no, aplica OCR de respaldo
-                if page_text and len(page_text.strip()) > 50:
-                    texts.append(page_text.strip())
-                else:
-                    ocr_text = extract_text_with_ocr(page)
-                    if ocr_text:
-                        texts.append(ocr_text)
-            except Exception:
-                # Respaldo adicional: intentar OCR si falló la extracción directa
-                try:
-                    page = doc.load_page(page_index)
-                    ocr_text = extract_text_with_ocr(page)
-                    if ocr_text:
-                        texts.append(ocr_text)
-                except Exception:
-                    # Si falla también el OCR, continuar con la siguiente página
-                    pass
-
-        doc.close()
-        return "\n".join(texts).strip()
-    except ImportError:
-        print("Error: PyMuPDF (fitz) no está instalado")
-        return ""
-    except Exception as e:
-        print(f"Error extrayendo texto de todas las páginas: {e}")
-        return ""
-def export_to_excel(data: dict, output_file: str) -> None:
-    """Exporta los datos a Excel en hoja 'Informacion_General'."""
-    try:
-        # Crear DataFrame con los datos
-        df = pd.DataFrame([data])
-
-        # Crear archivo Excel
-        with pd.ExcelWriter(output_file, engine="openpyxl") as writer:
-            df.to_excel(writer, sheet_name='Informacion_General', index=False)
-
-        print(f"Datos exportados a Excel: {output_file} (hoja: Informacion_General)")
-
-    except Exception as e:
-        print(f"Error exportando a Excel: {e}")
-
-
-def extract_first_page_data(text: str, pdf_filename: str) -> dict:
-    """Extrae información de la primera página según especificaciones."""
-    data = {}
-
-    # Buscar componentes de la empresa (PyMuPDF puede fragmentar el texto)
-    lines = text.split('\n')
-
-    # Buscar NIT, DV y empresa en líneas separadas
-    nit_line = ""
-    dv_line = ""
-    empresa_line = ""
-
-    for i, line in enumerate(lines):
-        line_stripped = line.strip()
-        if line_stripped == "900428482":
-            nit_line = line_stripped
-        elif line_stripped == "1" and i > 0 and lines[i-1].strip() == "900428482":
-            dv_line = line_stripped
-        elif "YADAS WT IMPORTACIONES S.A.S." in line:
-            empresa_line = line_stripped
-
-    # Si encontramos la empresa, continuar
-    if empresa_line:
-        # Buscar "PRODUCTO" y cortar el texto ahí para eliminar todo lo que sigue
-        producto_idx = text.find("PRODUCTO")
-        if producto_idx != -1:
-            # Cortar el texto en "PRODUCTO" para eliminar todo lo que sigue
-            text = text[:producto_idx]
-
-        # Procesar líneas
-        lines = text.split('\n')
-        current_field_51_value = None
-
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
-
-            # Saltar líneas con solo ceros o X
-            if re.match(r'^[0\s\.]+\.?\s*$', line) or re.match(r'^[Xx\s]+$', line):
-                continue
-
-            # Procesar información básica
-            if ':' in line:
-                key, value = line.split(':', 1)
-                key = key.strip()
-                value = value.strip()
-                data[key] = value
-            else:
-                # Líneas sin formato clave:valor
-                if '@' in line and 'GMAIL.COM' in line:
-                    data['EMAIL_PROVEEDOR'] = line
-                # MODIFICADO: Mejorar detección de numero de factura para diferentes formatos
-                # Buscar patrones comunes de numero de factura: FC-, HMM, y otros códigos alfanuméricos
-                elif 'FC-' in line or 'HMM' in line or re.search(r'^[A-Z]{3}\d+', line):
-                    data['NUMERO_FACTURA'] = line.strip()
-                elif re.search(r'^\d{10}', line):
-                    data['CODIGO_ARANCELARIO'] = line
-                elif re.search(r'\d{4}\s+\d{2}\s+\d{2}', line):
-                    data['FECHA_FACTURA'] = line
-                elif 'YADAS WT IMPORTACIONES S.A.S.' in line:
-                    data['NOMBRE_IMPORTADOR'] = line.strip()
-                elif 'BENITOMO WORLD S.A' in line or 'NSK LATIN AMERICA INC' in line:
-                    data['NOMBRE_PROVEEDOR_EXTERIOR'] = line.strip()
-                elif line.strip() == '51':
-                    # CAMBIO: Mejorar lógica para campo 51 - buscar numero de factura después del campo 51
-                    current_field_51_value = '51'
-                elif current_field_51_value == '51' and line.strip().isdigit():
-                    # Si venimos del campo 51 y encontramos un número, podría ser el numero de factura
-                    data['NUMERO_FACTURA_CAMPO_51'] = line.strip()
-                    current_field_51_value = None
-
-        return data
-
-    return data
-
-
-def process_pdf_file(pdf_file: str) -> dict:
-    """Procesa un archivo PDF individual."""
-    try:
-        print(f"Iniciando procesamiento de: {pdf_file}")
-
-        # Validar archivo
-        if not Path(pdf_file).exists():
-            return {"error": f"Archivo no encontrado: {pdf_file}"}
-
-        # Extraer texto: primera página para datos generales y TODAS las páginas para productos
-        text_first = extract_text_from_first_page(pdf_file)
-        if not text_first:
-            return {"error": f"No se pudo extraer texto de: {pdf_file}"}
-        text_all = extract_text_from_all_pages(pdf_file) or text_first
-
-        # Guardar textos extraídos (para depuración)
-        text_file_first = pdf_file.replace('.pdf', '_first_page_text.txt')
-        with open(text_file_first, 'w', encoding='utf-8') as f:
-            f.write(text_first)
-        text_file_all = pdf_file.replace('.pdf', '_all_pages_text.txt')
-        with open(text_file_all, 'w', encoding='utf-8') as f:
-            f.write(text_all)
-
-        # Extraer datos generales de la PRIMERA página
-        data = extract_first_page_data(text_first, pdf_file)
-
-        if data:
-            # Crear JSON output
-            json_output = {
-                'datos_generales': [data],
-                'productos': [],
-                'metadata': {
-                    'fecha_procesamiento': datetime.now().isoformat(),
-                    'archivo_procesado': pdf_file,
-                    'total_declaraciones': 1,
-                    'total_productos': 0
-                }
-            }
-
-            # Guardar JSON
-            json_file = pdf_file.replace('.pdf', '.json')
-            with open(json_file, 'w', encoding='utf-8') as f:
-                json.dump(json_output, f, indent=2, ensure_ascii=False)
-
-            # Exportar a Excel (datos generales)
-            excel_file = pdf_file.replace('.pdf', '.xlsx')
-            export_to_excel(data, excel_file)
-
-            # Extraer y guardar productos usando TODAS las páginas
-            products_list = extract_and_save_products(text_all, pdf_file, excel_file)
-
-            # Actualizar metadata con el número real de productos
-            json_output['metadata']['total_productos'] = len(products_list)
-            json_output['productos'] = products_list
-
-            print("JSON output:")
-            print(json.dumps(json_output, indent=2, ensure_ascii=False))
-
-            return json_output
-        else:
-            return {"error": "No se encontraron datos para procesar"}
-
-    except Exception as e:
-        error_msg = f"Error procesando {pdf_file}: {str(e)}"
-        print(error_msg)
-        return {"error": error_msg}
-
-
-def extract_and_save_products(text: str, pdf_file: str, excel_file: str) -> List[Dict[str, Any]]:
+def separar_declaraciones(texto: str, fin_delim="^DO  LAC$") -> list:
     """
-    Extrae productos del texto y los guarda en la hoja "Productos" del Excel.
-
-    Args:
-        text: Texto extraído del PDF
-        pdf_file: Nombre del archivo PDF
-        excel_file: Archivo Excel de salida
-
-    Returns:
-        List[Dict[str, Any]]: Lista de productos extraídos
+    Separa bloques de 'DECLARACION <num> DE <año>' hasta que encuentre fin_delim
+    o hasta la siguiente DECLARACION.
     """
-    try:
-        from productos import ProductExtractor
-
-        # Crear extractor de productos
-        extractor = ProductExtractor()
-
-        # Extraer productos
-        products_df = extractor.extract_products_from_text(text, pdf_file)
-
-        if not products_df.empty:
-            # Guardar productos en Excel
-            extractor.save_products_to_excel(products_df, excel_file)
-            print(f"Productos extraídos y guardados: {len(products_df)} productos")
-
-            # Convertir DataFrame a lista de diccionarios
-            products_list = products_df.to_dict('records')
-            return products_list
+    pattern = re.compile(r"DECLARACION\s+(\d+)\s+DE\s+(\d+)", re.IGNORECASE)
+    matches = list(pattern.finditer(texto))
+    declaraciones = []
+    for i, match in enumerate(matches):
+        numero = int(match.group(1))
+        start = match.start()
+        fin_match = re.search(re.escape(fin_delim), texto[start:], re.IGNORECASE)
+        if fin_match:
+            end = start + fin_match.end()
+        elif i + 1 < len(matches):
+            end = matches[i + 1].start()
         else:
-            print("No se encontraron productos para extraer")
-            return []
+            end = len(texto)
+        contenido = texto[start:end].strip()
+        declaraciones.append({"numero": numero, "contenido": contenido})
+    return sorted(declaraciones, key=lambda x: x["numero"])
 
-    except ImportError as e:
-        print(f"Error importando ProductExtractor: {e}")
-        return []
-    except Exception as e:
-        print(f"Error extrayendo productos: {e}")
-        return []
+def limpiar_lineas(texto: str):
+    lines = texto.splitlines()
+    lines = [line.strip() for line in lines if line.strip()]
+    lines = [line.replace(",", ".") for line in lines]
+    return lines
 
+# =========================
+# Búsqueda robusta template
+# =========================
 
-def main():
-    """Función principal de ejecución."""
-    import glob
-    import os
+def localizar_template(base_path: str, pdf_directory: str, nombre_template: str) -> str:
+    """
+    Busca el template en:
+      1) PDF_A_LEER/
+      2) junto al script
+      3) ./plantillas/
+    Devuelve la ruta encontrada o lanza FileNotFoundError.
+    """
+    candidatos = [
+        os.path.join(pdf_directory, nombre_template),
+        os.path.join(base_path, nombre_template),
+        os.path.join(base_path, "plantillas", nombre_template),
+    ]
 
-    # Cambiar al directorio del script
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    os.chdir(script_dir)
+    print("Buscando template en:")
+    for c in candidatos:
+        print("  -", c)
 
-    # Encontrar archivos PDF
-    pdf_files = glob.glob("*.pdf")
-    if not pdf_files:
-        print("No se encontraron archivos PDF en el directorio")
-        return
+    for c in candidatos:
+        if os.path.exists(c):
+            return c
 
-    print(f"Iniciando procesamiento... Encontrados {len(pdf_files)} archivos PDF")
+    raise FileNotFoundError(
+        "No se encuentra el template en ninguna de las rutas probadas.\n"
+        f"Nombre esperado: '{nombre_template}'\n"
+        + "\n".join(f" - {c}" for c in candidatos)
+    )
 
-    for pdf_file in pdf_files:
-        result = process_pdf_file(pdf_file)
-
-        if "error" not in result:
-            print(f"Procesamiento completado exitosamente: {pdf_file}")
-        else:
-            print(f"Error en {pdf_file}: {result['error']}")
-
+# =========================
+# Programa principal
+# =========================
 
 if __name__ == "__main__":
-    main()
+    # --- rutas base dinámicas (relativas al archivo .py)
+    base_path = os.path.dirname(os.path.abspath(__file__))
+
+    # Carpeta donde están los PDFs (crea si no existe)
+    pdf_directory = os.path.join(base_path, "PDF_A_LEER")
+    os.makedirs(pdf_directory, exist_ok=True)
+
+    # Carpeta de salida
+    output_dir = os.path.join(pdf_directory, "EXCEL_PDF_LEIDOS")
+    os.makedirs(output_dir, exist_ok=True)
+
+    # --- localizar template
+    TEMPLATE_NAME = "FORMATO DECLARACION IMPORTACION.xlsx"
+    template_path = localizar_template(base_path, pdf_directory, TEMPLATE_NAME)
+    print(f"Usando template: {template_path}")
+
+    # --- leer encabezados del template
+    try:
+        template_df = pd.read_excel(template_path, header=0)
+    except ImportError as e:
+        raise RuntimeError(
+            "Para leer archivos .xlsx necesitas 'openpyxl'.\n"
+            "Instala con: pip install openpyxl"
+        ) from e
+
+    headers = template_df.columns.tolist()
+    if not headers:
+        raise RuntimeError("El template no tiene encabezados en la primera fila.")
+
+    # --- listar PDFs
+    pdf_files = [
+        os.path.join(pdf_directory, f)
+        for f in os.listdir(pdf_directory)
+        if f.lower().endswith(".pdf")
+    ]
+
+    if not pdf_files:
+        print(f"No se encontraron archivos PDF en: {pdf_directory}")
+        raise SystemExit(0)
+
+    extractor = ProductExtractor()
+
+    # --- procesar cada PDF → 1 Excel por PDF
+    for ruta_pdf in pdf_files:
+        base = os.path.basename(ruta_pdf)
+        nombre_sin_ext, _ = os.path.splitext(base)
+        print(f"\nProcesando: {base}")
+
+        texto_extraido = extraer_texto_pdf(ruta_pdf)
+
+        # ---- Declaraciones (solo de ESTE PDF)
+        declaraciones = separar_declaraciones(texto_extraido)
+        all_rows = []
+        for decl in declaraciones:
+            print(f"   -> Extrayendo DECLARACION {decl['numero']}...")
+            lines = limpiar_lineas(decl["contenido"])
+            data = [None] * len(headers)
+            for i in range(min(len(lines), len(headers))):
+                data[i] = lines[i]
+            all_rows.append(data)
+
+        df_decl = None
+        if all_rows:
+            df_decl = pd.DataFrame(all_rows, columns=headers).dropna(axis=1, how="all")
+            # Renombres según tu lógica original
+            df_decl.rename(columns={"Columna79": "VALOR FOB USD"}, inplace=True)
+            df_decl.rename(columns={"Columna80": "VALOR FLETES USD"}, inplace=True)
+            df_decl.rename(columns={"Columna68": "COD_PAIS_COMPRA"}, inplace=True)
+            df_decl.rename(columns={"Columna69": "PESO_BRUTO"}, inplace=True)
+            df_decl.rename(columns={"Columna70": "DMS_PESO_BRUTO_KG"}, inplace=True)
+            df_decl.rename(columns={"Columna71": "PESO_NETO_KG"}, inplace=True)
+            df_decl.rename(columns={"Columna72": "DMS_PESO_NETO_KG"}, inplace=True)
+            df_decl.rename(columns={"Columna73": "CODIGO_EMBALAJE"}, inplace=True)
+            df_decl.rename(columns={"Columna74": "NUMERO_BULTOS"}, inplace=True)
+            df_decl.rename(columns={"Columna75": "SUBPARTIDAS"}, inplace=True)
+            df_decl.rename(columns={"Columna76": "COD_UNIDAD_CAL"}, inplace=True)
+            df_decl.rename(columns={"Columna77": "CANTIDAD"}, inplace=True)
+            df_decl.rename(columns={"Columna78": "DMS_CANTIDAD"}, inplace=True)
+            df_decl.rename(columns={"Columna81": "VALOR_SEGUROS_USD"}, inplace=True)
+            df_decl.rename(columns={"Columna82": "VALOR_OTROS_GASTOS"}, inplace=True)
+            df_decl.rename(columns={"Columna83": "SUMATORIA_FLETES_SEGUROS_OTROS_USD"}, inplace=True)
+            df_decl.rename(columns={"Columna84": "AJUSTE_VALOR_USD"}, inplace=True)
+            df_decl.rename(columns={"Columna85": "VALOR_ADUANA_USD"}, inplace=True)
+            df_decl.rename(columns={"Columna88": "COD_OFICINA"}, inplace=True)
+
+        # ---- Productos (solo de ESTE PDF)
+        df_products = pd.DataFrame()
+        try:
+            df_prod_tmp = extractor.extract_products_from_text(texto_extraido, base)
+            if df_prod_tmp is not None and not df_prod_tmp.empty:
+                # Quitar columnas prohibidas si aparecen
+                columnas_prohibidas = [
+                    "Moneda", "Valor_FOB", "Incoterm",
+                    "Peso_Neto", "Peso_Bruto", "API", "ACEA"
+                ]
+                for col in columnas_prohibidas:
+                    if col in df_prod_tmp.columns:
+                        df_prod_tmp.drop(columns=[col], inplace=True)
+
+                # Podar columnas totalmente vacías
+                vacias = [
+                    c for c in df_prod_tmp.columns
+                    if df_prod_tmp[c].astype(str).str.strip().eq("").all() or df_prod_tmp[c].isna().all()
+                ]
+                if vacias:
+                    df_prod_tmp.drop(columns=vacias, inplace=True)
+
+                df_products = df_prod_tmp
+                print(f"   -> Productos extraídos: {len(df_products)}")
+            else:
+                print("   -> No se encontraron productos en este PDF.")
+        except Exception as e:
+            print(f"   -> Error al extraer productos: {e}")
+
+        # ---- Guardado: UN EXCEL POR PDF con el MISMO NOMBRE
+        excel_name = f"{nombre_sin_ext}.xlsx"
+        excel_path = os.path.join(output_dir, excel_name)
+
+        if (df_decl is None or df_decl.empty) and (df_products is None or df_products.empty):
+            print(f"   -> No hay datos para guardar en {excel_name}.")
+            continue
+
+        try:
+            with pd.ExcelWriter(excel_path, engine="openpyxl") as writer:
+                if df_decl is not None and not df_decl.empty:
+                    df_decl.to_excel(writer, sheet_name="Declaraciones", index=False)
+                if df_products is not None and not df_products.empty:
+                    df_products.to_excel(writer, sheet_name="Productos", index=False)
+        except ImportError as e:
+            raise RuntimeError(
+                "Para escribir .xlsx necesitas 'openpyxl'.\n"
+                "Instala con: pip install openpyxl"
+            ) from e
+
+        print(f"   -> Archivo Excel generado: {excel_path}")
+        print(f"      Declaraciones: {0 if df_decl is None else len(df_decl)} | Productos: {0 if df_products is None else len(df_products)}")
+
+    print("\nProceso completado (un Excel por PDF).")

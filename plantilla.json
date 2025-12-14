@@ -1,0 +1,62 @@
+{
+    "codigo": [
+        "Código",
+        "Code",
+        "Cod.",
+        "Cod",
+        "Ref",
+        "ID",
+        "Item Code",
+        "SKU"
+    ],
+    "descripcion": [
+        "Descripción",
+        "Description",
+        "Libellé",
+        "Item",
+        "Article",
+        "Designación"
+    ],
+    "marca": [
+        "Marca",
+        "Brand",
+        "Marque",
+        "Fabricant",
+        "Maker",
+        "Manufacturer"
+    ],
+    "cantidad": [
+        "Cantidad",
+        "Qty",
+        "Qté",
+        "Qt",
+        "Quantity",
+        "QTY",
+        "Qte",
+        "Unités"
+    ],
+    "precio_unitario": [
+        "Precio",
+        "Unit Price",
+        "Prix Unit",
+        "PU",
+        "Montant HT",
+        "Price",
+        "Unit Cost"
+    ],
+    "subtotal_linea": [
+        "Sub-Total",
+        "Subtotal",
+        "Line Total",
+        "Montant HT",
+        "Total item price",
+        "Montant Ligne"
+    ],
+    "total": [
+        "Total",
+        "Montant TTC",
+        "Invoice Total",
+        "Total général",
+        "Totales"
+    ]
+}

@@ -1,28 +1,32 @@
-# Sistema de Procesamiento de Declaraciones de Importación
+# Sistema de Comparación de Archivos Excel (Declaración vs Factura)
 
-Un sistema modular y orientado a objetos para procesar declaraciones de importación desde archivos PDF, extrayendo datos generales y productos de manera estructurada.
+Un sistema para comparar archivos Excel de declaraciones de importación y facturas, identificando coincidencias parciales en referencias, comparando cantidades y generando reportes detallados con interfaz gráfica.
 
 ## Características Principales
 
-- **Arquitectura Modular**: Código organizado en módulos separados por responsabilidades
-- **Orientado a Objetos**: Diseño basado en clases y principios SOLID
-- **Extracción Robusta**: Múltiples métodos para extraer productos de diferentes formatos
-- **Configurable**: Sistema de configuración flexible
-- **Testeable**: Suite de tests unitarios incluida
-- **Manejo de Errores**: Logging y manejo de errores robusto
-- **Exportación Múltiple**: Soporte para Excel y JSON
+- **Comparación Inteligente**: Busca coincidencias parciales entre referencias de productos
+- **Interfaz Gráfica**: Selección visual de columnas equivalentes entre archivos
+- **Manejo de Cantidades**: Comparación precisa de cantidades con diferencias calculadas
+- **Soporte para Marcas**: Filtro opcional por marca para mayor precisión
+- **Exportación Automática**: Resultados exportados a Excel con todos los campos originales
+- **Barra de Progreso**: Indicador visual del progreso de comparación
+- **Manejo de Errores**: Validación robusta de archivos y datos
 
 ## Estructura del Proyecto
 
 ```
-├── config/                 # Módulo de configuración
-├── models/                 # Modelos de datos (dataclasses)
-├── parsers/                # Lógica de parsing de declaraciones
-├── extractors/             # Lógica de extracción de productos
-├── utils/                  # Utilidades y funciones auxiliares
-├── tests/                  # Tests unitarios
-├── main.py                 # Punto de entrada principal
-└── requirements.txt        # Dependencias del proyecto
+├── archivo_principal.py     # Script principal con interfaz gráfica completa
+├── comparacion.py          # Versión simplificada sin barra de progreso
+├── archivo_principal.spec  # Configuración para cx_Freeze
+├── setup.py               # Script de construcción del ejecutable
+├── requirements.txt        # Dependencias del proyecto
+├── README.md              # Documentación del proyecto
+├── config/                # Módulo de configuración
+├── models/                # Modelos de datos (dataclasses)
+├── scraper/               # Módulo de scraping web
+├── utils/                 # Utilidades y funciones auxiliares
+├── writers/               # Módulos de escritura/exportación
+└── output/                # Directorio de salida para resultados
 ```
 
 ## Instalación
@@ -40,218 +44,156 @@ pip install -r requirements.txt
 
 ## Uso Básico
 
-### Procesamiento Simple
+# Activar el entorno
+& c:/Users/asus/Documents/Declaracion-de-importacion_V_290/declaracion_importacion/Scripts/Activate.ps1
 
-```python
-from main import DeclaracionProcessor
+# EJECUTAR EL SCRIPT
+streamlit run streamlit.py
 
-# Crear procesador
-processor = DeclaracionProcessor()
+### Comparación con Interfaz Gráfica (Recomendado)
 
-# Procesar archivo PDF
-result = processor.process_pdf_file("archivo.pdf", "salida.xlsx")
-
-print(f"Declaraciones procesadas: {result.declaraciones_encontradas}")
-print(f"Productos extraídos: {result.productos_extraidos}")
-```
-
-### Procesamiento Múltiple
-
-```python
-# Procesar múltiples archivos
-results = processor.process_multiple_pdfs("*.pdf", "salida.xlsx")
-
-for result in results:
-    print(f"Archivo: {result.archivo_procesado}")
-    print(f"  Declaraciones: {result.declaraciones_encontradas}")
-    print(f"  Productos: {result.productos_extraidos}")
-```
-
-## Configuración
-
-El sistema utiliza un sistema de configuración flexible:
-
-```python
-from config import Config, ConfigManager
-
-# Crear configuración personalizada
-config = Config(
-    log_level="DEBUG",
-    max_financial_lines=15,
-    export_formats=['excel', 'json']
-)
-
-# Crear procesador con configuración
-processor = DeclaracionProcessor(config)
-```
-
-### Variables de Entorno
-
-También se puede configurar mediante variables de entorno:
+Ejecuta el script principal para una experiencia completa:
 
 ```bash
-export LOG_LEVEL=DEBUG
-export WORKING_DIRECTORY=/ruta/al/directorio
+streamlit run streamlit.py
 ```
 
-## Modelos de Datos
+O para la versión simplificada:
 
-### DeclaracionData
-
-Representa los datos generales de una declaración de importación:
-
-```python
-from models import DeclaracionData
-
-declaracion = DeclaracionData(
-    numero_declaracion="1 DE 4",
-    tipo_declaracion="DO /IMP",
-    nit_importador="900428482",
-    nombre_importador="YADAS WT IMPORTACIONES S.A.S."
-)
+```bash
+python comparacion.py
 ```
 
-### ProductoData
+### Funcionalidades
 
-Representa los datos de un producto:
+- **Selección Automática de Archivos**: Detecta automáticamente archivos Excel en el directorio configurado
+- **Interfaz de Selección de Columnas**: Permite mapear columnas equivalentes entre declaración y factura
+- **Comparación Inteligente**: Busca coincidencias parciales en referencias
+- **Filtros Opcionales**: Soporte para filtrar por marca cuando está disponible
+- **Resultados Detallados**: Exporta todas las coincidencias, diferencias y registros únicos
 
-```python
-from models import ProductoData
+### Configuración
 
-producto = ProductoData(
-    declaracion_numero="1",
-    producto="RODAMIENTOS DE BOLA",
-    marca="NSK",
-    modelo="NO TIENE",
-    referencia="BD25-9T12C3",
-    cantidad="10"
-)
+El sistema busca archivos Excel en el directorio:
+```
+D:\DESARROLLO DE SOFTWARE\PDF_A_LEER\EXCEL_PDF_LEIDOS
 ```
 
-## Arquitectura
+Los resultados se guardan automáticamente en `resultado_comparacion.xlsx` en el mismo directorio.
 
-### Módulos
+## Algoritmo de Comparación
 
-#### 1. Config (`config/`)
-- Gestión de configuración del sistema
-- Variables de entorno y archivos de configuración
-- Parámetros de procesamiento
+El sistema implementa un algoritmo inteligente para comparar archivos Excel:
 
-#### 2. Models (`models/`)
-- Definiciones de datos usando dataclasses
-- Estructuras para declaraciones y productos
-- Métodos de serialización
+1. **Detección Automática**: Identifica archivos de declaración y factura por nombre
+2. **Selección de Columnas**: Interfaz gráfica para mapear columnas equivalentes
+3. **Limpieza de Datos**: Normalización de tipos de datos y manejo de valores nulos
+4. **Comparación por Referencia**: Búsqueda de coincidencias parciales usando expresiones regulares
+5. **Filtrado por Marca**: Filtro opcional adicional cuando las columnas de marca están disponibles
+6. **Cálculo de Diferencias**: Comparación numérica de cantidades
+7. **Clasificación de Resultados**:
+   - **Coincide**: Referencia y cantidad exactas
+   - **Cantidad diferente**: Referencia coincide pero cantidad varía
+   - **Solo en Declaración**: Registro único en archivo de declaración
+   - **Solo en Factura**: Registro único en archivo de factura
 
-#### 3. Parsers (`parsers/`)
-- Parsing de datos generales de declaraciones
-- Análisis línea por línea
-- Extracción estructurada de información
+## Formato de Salida
 
-#### 4. Extractors (`extractors/`)
-- Extracción de productos usando múltiples métodos
-- 21 métodos diferentes para diferentes formatos
-- Eliminación de duplicados automática
+El archivo de resultados `resultado_comparacion.xlsx` contiene:
 
-#### 5. Utils (`utils/`)
-- Utilidades para procesamiento de texto
-- Validaciones de datos
-- Gestión de archivos
-- Patrones regex reutilizables
+- Todas las columnas originales de ambos archivos (sufijadas con _DECLARACION y _FACTURA)
+- Columna `DIFERENCIA_CANTIDAD`: Diferencia numérica entre cantidades
+- Columna `RESULTADO`: Clasificación del tipo de coincidencia
 
-#### 6. Tests (`tests/`)
-- Tests unitarios para todos los módulos
-- Tests de integración
-- Mocks para dependencias externas
+## Scripts Disponibles
 
-## Métodos de Extracción de Productos
+### archivo_principal.py
+Script principal con interfaz gráfica completa que incluye:
+- Selección visual de columnas
+- Barra de progreso durante la comparación
+- Manejo completo de errores
+- Exportación automática de resultados
 
-El sistema implementa 21 métodos diferentes para extraer productos:
+### comparacion.py
+Versión simplificada sin interfaz de progreso, ideal para:
+- Ejecución por lotes
+- Integración en otros sistemas
+- Procesamiento automatizado
 
-1. **Método 1**: Formato completo estándar
-2. **Método 2**: Formato simplificado
-3. **Método 3**: Patrón flexible para continuación
-4. **Método 4**: Formato para productos que cruzan páginas
-5. **Método 5**: Formato de continuación
-6. **Método 6**: Continuación simplificada
-7. **Método 7**: Productos en la misma línea
-8. **Método 8**: Descripciones adicionales
-9. **Método 9**: Formato país y cantidad
-10. **Método 10**: Continuación flexible
-11. **Método 11**: Detalles de continuación
-12. **Método 12**: Búsqueda comprehensiva
-13. **Método 13**: Sección de descripción
-14. **Método 14**: Descripción flexible
-15. **Método 15**: Patrón CANT // PRODUCTO
-16. **Método 16**: Segunda declaración
-17. **Método 17**: Marcador de continuación
-18. **Método 18**: Continuación avanzada
-19. **Método 19**: Continuación simplificada
-20. **Método 20**: Lista larga avanzada
-21. **Método 21**: Lista larga flexible
+### Otros Scripts
+- `ejemplo_uso.py`: Ejemplos de uso básico
+- `main_simple.py`: Versión minimalista
+- Scripts específicos en subdirectorios para funcionalidades adicionales
+
+## Requisitos del Sistema
+
+- **Python**: 3.8 o superior
+- **Dependencias**: Ver requirements.txt
+- **Archivos de entrada**: Archivos Excel (.xlsx, .xls) en el directorio configurado
+- **Espacio de salida**: Escritura en el directorio de entrada
+
+## Construcción de Ejecutable
+
+Este repositorio contiene instrucciones para crear un ejecutable independiente. Hay dos enfoques comunes:
+
+- cx_Freeze: existe una configuración histórica en el repositorio (si prefieres `cx_Freeze` puedes usar el `setup.py` antiguo). Ejemplo:
+
+```powershell
+# Con cx_Freeze (si tienes setup.py preparado)
+python setup.py build
+```
+
+- PyInstaller (recomendado para crear un único archivo ejecutable que puedas llevar a otras máquinas). He añadido un helper PowerShell `build_exe.ps1` en la raíz del proyecto para simplificar el proceso.
+
+Ejemplo (PowerShell, desde la raíz del proyecto):
+
+```powershell
+# Construye un exe en modo "onefile" para main_simple.py
+.\build_exe.ps1 -Script main_simple.py -OneFile
+
+# Construye el lanzador GUI sin consola visible
+.\build_exe.ps1 -Script ejecutar.py -OneFile -NoConsole
+```
+
+Después del build revisa la carpeta `dist/` para el ejecutable. El script intenta incluir carpetas comunes (`config`, `models`, `utils`, `writers`, `scraper`) y los archivos `README.md` y `requirements.txt` si están presentes.
+
+Nota sobre la ubicación del lanzador:
+
+Si el archivo `ejecutar.py` fue movido a la carpeta `ejecutable` (por ejemplo `ejecutable\ejecutar.py`), el repositorio incluye un helper dentro de esa carpeta. Puedes invocar directamente el helper con:
+
+```powershell
+.\ejecutable\build_exe.ps1 -Script ejecutar.py -OneFile -NoConsole
+```
+
+O bien, para mantener compatibilidad con el uso desde la raíz, hay un wrapper `build_exe.ps1` en la raíz que reenviará los argumentos al helper dentro de `ejecutable`.
+
+Consejos:
+
+- Si tu aplicación usa dependencias grandes (por ejemplo `torch`, `easyocr`, `opencv`), el ejecutable resultante será grande; valora excluirlas si no las necesitas en la máquina destino.
+- Si encuentras errores por 'hidden imports', añade `--hidden-import nombre_modulo` a la llamada de PyInstaller o edita `build_exe.ps1` para añadirlos.
+- Si prefieres una distribución en carpeta en vez de un solo archivo (menos propensa a detecciones de antivirus), no uses `-OneFile`.
 
 ## Manejo de Errores
 
-El sistema incluye manejo robusto de errores:
+El sistema incluye validaciones robustas:
 
-- Logging detallado de todas las operaciones
-- Captura y reporte de errores específicos
-- Validación de archivos de entrada
-- Recuperación de errores en procesamiento individual
-
-## Tests
-
-Ejecutar la suite de tests:
-
-```bash
-python -m pytest tests/ -v
-```
-
-### Cobertura de Tests
-
-- ✅ Modelos de datos
-- ✅ Utilidades de texto y archivos
-- ✅ Validaciones
-- ✅ Parsers de declaraciones
-- ✅ Extractores de productos
-- ✅ Integración completa
-
-## Mejores Prácticas Implementadas
-
-### Principios SOLID
-
-1. **Single Responsibility**: Cada clase tiene una responsabilidad única
-2. **Open/Closed**: Extensible sin modificar código existente
-3. **Liskov Substitution**: Interfaces consistentes
-4. **Interface Segregation**: Interfaces específicas y enfocadas
-5. **Dependency Inversion**: Dependencias inyectadas
-
-### Patrones de Diseño
-
-- **Factory Pattern**: Fábricas para crear parsers y extractores
-- **Strategy Pattern**: Múltiples estrategias de extracción
-- **Template Method**: Estructura común para procesamiento
-- **Observer Pattern**: Logging y monitoreo de operaciones
-
-### Clean Code
-
-- Nombres descriptivos y significativos
-- Funciones pequeñas y enfocadas
-- Comentarios y documentación
-- Eliminación de código duplicado
-- Consistencia en el estilo
+- Verificación de existencia de archivos Excel
+- Validación de selección de columnas requeridas
+- Manejo de tipos de datos mixtos
+- Recuperación de errores en conversión numérica
+- Mensajes de error descriptivos en interfaz gráfica
 
 ## Contribución
 
 1. Fork el proyecto
 2. Crear rama para nueva funcionalidad
-3. Agregar tests para nueva funcionalidad
+3. Probar cambios con archivos de ejemplo
 4. Implementar la funcionalidad
-5. Ejecutar tests completos
+5. Actualizar documentación si es necesario
 6. Crear Pull Request
 
 ## Licencia
 
-Este proyecto está bajo la Licencia MIT. Ver el archivo LICENSE para más detalles.
 
 ## Soporte
 
@@ -259,24 +201,28 @@ Para soporte técnico o preguntas:
 
 - Crear un issue en GitHub
 - Revisar la documentación
-- Ejecutar tests para diagnosticar problemas
+- Probar con archivos de ejemplo
 
 ## Roadmap
 
-### Versión 2.1
-- [ ] Soporte para más formatos de PDF
+### Mejoras Planificadas
+- [ ] Soporte para múltiples pares de archivos simultáneamente
+- [ ] Configuración personalizable del directorio de trabajo
+- [ ] Filtros adicionales (fecha, valor, etc.)
 - [ ] Interfaz web para carga de archivos
-- [ ] API REST para integración
-- [ ] Configuración avanzada por archivo
+- [ ] API para integración con otros sistemas
+- [ ] Exportación a formatos adicionales (CSV, JSON)
+- [ ] Análisis estadístico de resultados
 
-### Versión 2.2
-- [ ] Machine Learning para extracción automática
-- [ ] Soporte para múltiples idiomas
-- [ ] Integración con bases de datos
-- [ ] Dashboard de análisis
+## Módulo de Scraping Web
 
-### Versión 3.0
-- [ ] Microservicios
-- [ ] Procesamiento distribuido
-- [ ] Integración con sistemas aduaneros
-- [ ] IA para validación automática
+Este repositorio incluye un módulo de scraping web con paginación robusta incluido en el directorio `scraper/`. Este módulo es independiente del comparador de Excel y ofrece funcionalidades avanzadas de extracción web.
+
+Características del scraper:
+- Paginación automática por parámetros URL o enlaces "Siguiente"
+- Deduplicación inteligente de productos
+- Reintentos con backoff exponencial
+- Exportación idempotente a Excel
+- Logs detallados y resúmenes JSON
+
+Para más información sobre el scraper, consulte la documentación específica en el directorio `scraper/`.

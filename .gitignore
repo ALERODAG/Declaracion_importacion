@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+declaracion_importacion/ 
+.pytest_cache/
+
+# VS Code
+.vscode/
+
+# PyInstaller / Build
+build/
+dist/
+*.spec
+ejecutable/
+
+# Project Data / Output
+PDF_A_LEER/
+SALIDA/
+output/
+RESULTADO_FORMATO_DECLARACION.xlsx
+Descargas/
+test_universal_parser.xlsx
