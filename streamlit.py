@@ -611,6 +611,11 @@ if subir_declaracion:
             
             # Agrupar por Referencia
             # Tomamos la primera descripción y archivo como referencia
+            # Forzamos conversión a string para evitar errores de PyArrow (mixed types)
+            df_total_invoices['Description'] = df_total_invoices['Description'].astype(str)
+            if 'Product Number' in df_total_invoices.columns:
+                df_total_invoices['Product Number'] = df_total_invoices['Product Number'].astype(str)
+
             agg_funcs = {
                 'Cantidad': 'sum',
                 'Valor_Total': 'sum',
