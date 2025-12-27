@@ -616,7 +616,8 @@ if subir_declaracion:
                 'Valor_Total': 'sum',
                 'Precio_Unitario': 'mean', # Promedio inicial, luego recalculamos
                 'Description': 'first',
-                'Product Number': 'first'
+                'Product Number': 'first',
+                'Archivo_Origen': lambda x: ", ".join(sorted(set(x)))
             }
             # Ajustar agg_funcs según columnas existentes
             exist_cols = df_total_invoices.columns
@@ -630,9 +631,24 @@ if subir_declaracion:
                     lambda x: x['Valor_Total'] / x['Cantidad'] if x['Cantidad'] > 0 else 0, axis=1
                 )
 
-            st.write("---")
-            st.write("### 📋 Facturas Consolidadas")
-            st.dataframe(df_consolidado, use_container_width=True)
+            # Si hay mas de una factura, mostrar la tabla consolidada de forma destacada
+            if len(subir_factura) > 1:
+                st.write("---")
+                st.markdown("### 📋 **Resumen Consolidado de Facturas**")
+                st.info(f"Se han consolidado datos de **{len(subir_factura)}** facturas.")
+                
+                # Formatear para visualización
+                df_consolidado_display = df_consolidado.copy()
+                format_dict = {}
+                if 'Cantidad' in df_consolidado_display.columns: format_dict['Cantidad'] = "{:,.2f}"
+                if 'Valor_Total' in df_consolidado_display.columns: format_dict['Valor_Total'] = "${:,.2f}"
+                if 'Precio_Unitario' in df_consolidado_display.columns: format_dict['Precio_Unitario'] = "${:,.2f}"
+                
+                st.dataframe(df_consolidado_display.style.format(format_dict), use_container_width=True)
+            else:
+                st.write("---")
+                st.write("### 📋 Facturas Consolidadas")
+                st.dataframe(df_consolidado, use_container_width=True)
 
             # 3. Comparación (Usando el consolidado)
             if 'df' in locals(): del df # Limpiar variables viejas para evitar conflictos
