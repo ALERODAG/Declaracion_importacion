@@ -41,14 +41,14 @@ def process_block(block, pdf_path, rows):
     descripcion = partes[1] if len(partes) > 1 else mid
 
     rows.append({
-        "Ítem": item,
-        "Código": codigo,
-        "Código2": codigo2,
-        "Descripción": descripcion.strip(),
-        "Marca": marca,
+        "Line_Number": item,
+        "Referencia": codigo,
+        "Code_2": codigo2,
+        "Description": descripcion.strip(),
+        "Brand": marca,
         "Cantidad": cantidad,
-        "Precio": precio,
-        "Total": round(cantidad * precio, 2)
+        "Precio_Unitario": precio,
+        "Valor_Total": round(cantidad * precio, 2)
     })
 
 

@@ -162,7 +162,8 @@ def procesar_pdf_filelike(file):
     texto = extraer_texto_pdf(temp_path)
     # print(texto) # DEBUG removed for production
     declaraciones = separar_declaraciones(texto)
-    
+
+ 
     
     
     # Cargar plantilla real
@@ -209,13 +210,13 @@ def guardar_excel_por_pdf(nombre_pdf, df_decl, df_prod):
     nombre_base = os.path.splitext(nombre_pdf)[0]
     excel_path = os.path.join(folder, f"{nombre_base}.xlsx")
 
-    with pd.ExcelWriter(excel_path, engine="openpyxl") as writer:
-        if not df_decl.empty:
-            df_decl.to_excel(writer, sheet_name="Declaraciones", index=False)
-        if not df_prod.empty:
-            df_prod.to_excel(writer, sheet_name="Productos", index=False)
+    # with pd.ExcelWriter(excel_path, engine="openpyxl") as writer:
+    #     if not df_decl.empty:
+    #         df_decl.to_excel(writer, sheet_name="Declaraciones", index=False)
+    #     if not df_prod.empty:
+    #         df_prod.to_excel(writer, sheet_name="Productos", index=False)
 
-    return excel_path
+    # return excel_path
 
 
 
@@ -228,12 +229,26 @@ def guardar_excel_por_pdf(nombre_pdf, df_decl, df_prod):
 
 col1, col2 = st.columns(2)
 
-#with col1:
+with col1:
+    st.write("Columna 1")
 st.subheader("📥 Declaraciones en Descargas")
-    
+
 subir_declaracion = st.file_uploader("Sube PDFs", type=["pdf"], accept_multiple_files=True)
 
 if subir_declaracion:
+    # --------------------------------------------------------
+    # LIMPIEZA DE ESTADO (Eliminar archivos quitados)
+    # --------------------------------------------------------
+    # 1. Identificar claves validas actuales
+    current_keys = set()
+    for f in subir_declaracion:
+        current_keys.add(f"data_{f.name}_{f.size}")
+    
+    # 2. Eliminar lo que sobre en session_state (solo claves de data_)
+    for key in list(st.session_state.keys()):
+        if key.startswith("data_") and key not in current_keys:
+            del st.session_state[key]
+
     for idx, f in enumerate(subir_declaracion):
         
         # --------------------------------------------------------
@@ -546,66 +561,254 @@ if subir_declaracion:
     st.subheader("📄 Facturas")    
     subir_factura = st.file_uploader("Sube PDFs de Facturas", type=["pdf"], accept_multiple_files=True, key="facturas")
     
+
     if subir_factura:
+        all_invoices = []
+        
+        # 1. Procesamiento individual y recolección
         for f in subir_factura:
-            # Guardar archivo temporalmente para procesar
             with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
                 tmp.write(f.read())
                 temp_path = tmp.name
             
-            # Procesar factura
-            df = procesar_factura(temp_path)
-            
-            if df is not None and not df.empty:
-                st.write(f"### 📋 Factura procesada: {f.name}")
-                st.write(f"**Productos encontrados:** {len(df)}")
-                st.write(f"**Campos detectados:** {len(df.columns)}")
-                
-                # Mostrar columnas detectadas
-                with st.expander("Ver campos detectados"):
-                    st.write(", ".join(df.columns.tolist()))
-                
-                # Capitalizar columnas para visualización
-                df_factura_display = df.copy()
-                df_factura_display.columns = [str(c).title() for c in df_factura_display.columns]
+            try:
+                df = procesar_factura(temp_path)
+                if df is not None and not df.empty:
+                    # Normalizar referencia inmediatamente para consistencia
+                    # Normalización de referencia
+                    if "Referencia" in df.columns:
+                        df["Referencia_Norm"] = df["Referencia"].astype(str).str.strip().str.upper().str.split('/').str[0]
+                    else:
+                         df["Referencia_Norm"] = "S/R"
 
-                # Selector de columnas para mostrar
-                columnas_seleccionadas = st.multiselect(
-                    "Selecciona las columnas a mostrar", 
-                    df_factura_display.columns.tolist(),
-                    default=df_factura_display.columns.tolist(),
-                    key=f"cols_{f.name}"
-                )
-                
-                if columnas_seleccionadas:
-                    st.dataframe(df_factura_display[columnas_seleccionadas], use_container_width=True)
+                    # Asegurar columnas numéricas
+                    for col in ['Cantidad', 'Valor_Total', 'Precio_Unitario']:
+                        if col in df.columns:
+                            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+                        else:
+                            df[col] = 0.0
+
+                    df["Archivo_Origen"] = f.name
+                    all_invoices.append(df)
+                    st.success(f"✅ Procesado: {f.name} ({len(df)} items)")
                 else:
-                    st.dataframe(df_factura_display, use_container_width=True)
+                    st.warning(f"⚠️ No se encontraron productos en: {f.name}")
+            except Exception as e:
+                st.error(f"Error procesando {f.name}: {e}")
+            finally:
+                if os.path.exists(temp_path):
+                    os.unlink(temp_path)
+
+        # 2. Agregación y Visualización
+        if all_invoices:
+            df_total_invoices = pd.concat(all_invoices, ignore_index=True)
+            
+            # MOSTRAR DATA FRAME DE FACTURAS (Detalle con encabezados dinámicos)
+            st.write("---")
+            st.write("### 🧾 Detalle de Facturas (Items)")
+            st.write("A continuación se muestran los items extraídos tal cual se detectaron en las facturas:")
+            st.dataframe(df_total_invoices, use_container_width=True)
+            
+            # Agrupar por Referencia
+            # Tomamos la primera descripción y archivo como referencia
+            agg_funcs = {
+                'Cantidad': 'sum',
+                'Valor_Total': 'sum',
+                'Precio_Unitario': 'mean', # Promedio inicial, luego recalculamos
+                'Description': 'first',
+                'Product Number': 'first'
+            }
+            # Ajustar agg_funcs según columnas existentes
+            exist_cols = df_total_invoices.columns
+            final_agg = {k: v for k, v in agg_funcs.items() if k in exist_cols}
+            
+            df_consolidado = df_total_invoices.groupby("Referencia_Norm", as_index=False).agg(final_agg)
+            
+            # Recalcular Precio Unitario Ponderado si existen datos
+            if 'Valor_Total' in df_consolidado.columns and 'Cantidad' in df_consolidado.columns:
+                df_consolidado['Precio_Unitario'] = df_consolidado.apply(
+                    lambda x: x['Valor_Total'] / x['Cantidad'] if x['Cantidad'] > 0 else 0, axis=1
+                )
+
+            st.write("---")
+            st.write("### 📋 Facturas Consolidadas")
+            st.dataframe(df_consolidado, use_container_width=True)
+
+            # 3. Comparación (Usando el consolidado)
+            if 'df' in locals(): del df # Limpiar variables viejas para evitar conflictos
+            
+            st.write("### ⚖️ Comparación Detallada (Facturas vs Declaraciones)")
+            
+            # Obtener productos de declaraciones
+            all_products_list = []
+            for key in st.session_state:
+                if key.startswith("data_"):
+                    d_prod = st.session_state[key]["prod"]
+                    if not d_prod.empty:
+                        all_products_list.append(d_prod)
+            
+            if all_products_list:
+                df_decl_total = pd.concat(all_products_list, ignore_index=True)
                 
-                # Guardar Excel con estructura dinámica
-                folder = os.path.join(os.getcwd(), "PDF_A_LEER", "EXCEL_PDF_LEIDOS")
-                os.makedirs(folder, exist_ok=True)
+                # Normalizar Declaraciones
+                if "Referencia" in df_decl_total.columns:
+                    df_decl_total["Referencia_Norm"] = df_decl_total["Referencia"].astype(str).str.strip().str.upper().str.split('/').str[0]
+                else:
+                    df_decl_total["Referencia_Norm"] = "S/R"
                 
-                # Usar splitext para manejar .pdf y .PDF correctamente
-                nombre_base = os.path.splitext(f.name)[0]
-                excel_path = os.path.join(folder, f"{nombre_base}_factura.xlsx")
+                # Agrupar Declaraciones
+                df_decl_total["Cantidad"] = pd.to_numeric(df_decl_total["Cantidad"], errors='coerce').fillna(0)
                 
-                df.to_excel(excel_path, index=False, sheet_name="Productos")
-                st.success(f"✅ Excel guardado: {excel_path}")
+                # Intentar buscar columnas de valor en Declaraciones (si existen)
+                # NOTA: Por defecto ProductExtractor no extrae precios, así que esto puede ser 0
+                has_val_decl = False
+                if 'Valor_Total' in df_decl_total.columns:
+                    df_decl_total["Valor_Total"] = pd.to_numeric(df_decl_total["Valor_Total"], errors='coerce').fillna(0)
+                    has_val_decl = True
                 
-                # Botón de descarga
-                with open(excel_path, "rb") as file:
-                    st.download_button(
-                        label="⬇️ Descargar Excel",
-                        data=file,
-                        file_name=f"{f.name.replace('.pdf', '')}_factura.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        key=f"download_{f.name}"
-                    )
+                agg_decl = {'Cantidad': 'sum'}
+                if has_val_decl: agg_decl['Valor_Total'] = 'sum'
                 
-                # Limpiar archivo temporal
-                os.unlink(temp_path)
+                df_decl_grouped = df_decl_total.groupby("Referencia_Norm", as_index=False).agg(agg_decl)
+                df_decl_grouped.rename(columns={"Cantidad": "Cant_Decl", "Valor_Total": "Valor_Decl"}, inplace=True)
+                
+                # Merge Comparativo
+                df_compare = pd.merge(
+                    df_consolidado, 
+                    df_decl_grouped, 
+                    on="Referencia_Norm", 
+                    how="outer"
+                ).fillna(0)
+                
+                # Cálculos de Diferencias
+                df_compare["Diff_Cant"] = df_compare["Cantidad"] - df_compare["Cant_Decl"]
+                
+                # Estado
+                def get_status(row):
+                    items = []
+                    if row["Diff_Cant"] == 0:
+                        items.append("✅ Cant OK")
+                    elif row["Cant_Decl"] == 0:
+                        items.append("⚠️ No en Decl")
+                    elif row["Diff_Cant"] > 0:
+                        items.append(f"❌ Sobra Fact ({row['Diff_Cant']:.0f})")
+                    else:
+                        items.append(f"❌ Falta Fact ({abs(row['Diff_Cant']):.0f})")
+                    return " | ".join(items)
+
+                df_compare["Estado"] = df_compare.apply(get_status, axis=1)
+                
+                # Selección de columnas para mostrar
+                cols_show = ["Referencia_Norm", "Description", "Cantidad", "Cant_Decl", "Diff_Cant", "Valor_Total", "Precio_Unitario", "Estado"]
+                # Filtrar solo las que existen
+                cols_final = [c for c in cols_show if c in df_compare.columns]
+                
+                # Renombrar para display
+                rename_display = {
+                    "Referencia_Norm": "Referencia",
+                    "Cantidad": "Cant. Factura",
+                    "Cant_Decl": "Cant. Decl",
+                    "Description": "Descripción (Fact)",
+                    "Valor_Total": "Valor Total (Fact)",
+                    "Precio_Unitario": "Precio Unit. (Calc)"
+                }
+                
+                df_display = df_compare[cols_final].rename(columns=rename_display)
+                
+                st.dataframe(df_display.style.format({
+                    "Cant. Factura": "{:,.0f}",
+                    "Cant. Decl": "{:,.0f}",
+                    "Diff_Cant": "{:,.0f}",
+                    "Valor Total (Fact)": "${:,.2f}",
+                    "Precio Unit. (Calc)": "${:,.2f}"
+                }), use_container_width=True)
+                
             else:
-                st.warning(f"⚠️ No se pudo procesar la factura: {f.name}")
-                # Limpiar archivo temporal
-                os.unlink(temp_path)
+                st.info("ℹ️ Sube archivos de Declaración para ver la comparación.")
+
+        # -----------------------------------------------------------------------------
+        # TABLA DE COMPARACIÓN (RESUMEN)
+        # -----------------------------------------------------------------------------
+        if 'df' in locals() and df is not None and not df.empty:
+            st.write("### ⚖️ Comparación con Productos (Declaraciones)")
+            
+            # 1. Obtener TODOS los productos de las declaraciones cargadas
+            all_products_list = []
+            for key in st.session_state:
+                if key.startswith("data_"):
+                    # Extraer DF productos
+                    d_prod = st.session_state[key]["prod"]
+                    if not d_prod.empty:
+                        all_products_list.append(d_prod)
+            
+            if all_products_list:
+                df_all_products = pd.concat(all_products_list, ignore_index=True)
+                
+                # Normalizar columnas para el merge/comparación
+                # Referencia Factura
+                if "Referencia" in df.columns:
+                    # Limpiar y normalizar (tomar lo que está antes del /)
+                    df["Referencia_Norm"] = df["Referencia"].astype(str).str.strip().str.upper().str.split('/').str[0]
+                else:
+                    st.error("No se encontró columna 'Referencia' en la factura procesada.")
+                    df["Referencia_Norm"] = ""
+
+                # Referencia Productos
+                if "Referencia" in df_all_products.columns:
+                    df_all_products["Referencia_Norm"] = df_all_products["Referencia"].astype(str).str.strip().str.upper().str.split('/').str[0]
+                else:
+                    st.error("No se encontró columna 'Referencia' en los productos cargados.")
+                    df_all_products["Referencia_Norm"] = ""
+
+                # Agrupar productos por Referencia (sumar cantidades)
+                # Asumimos que la columna de cantidad en productos es 'Cantidad'
+                # Convertir a numérico si es necesario
+                def clean_qty(v):
+                    try: return float(v)
+                    except: return 0.0
+                
+                df_all_products["Cantidad_Num"] = df_all_products["Cantidad"].apply(clean_qty)
+                
+                grouped_products = df_all_products.groupby("Referencia_Norm")["Cantidad_Num"].sum().reset_index()
+                grouped_products.rename(columns={"Cantidad_Num": "Cant. Declaraciones"}, inplace=True)
+                
+                # Agrupar Factura por Referencia
+                # Asumimos columna 'Qty Ordered' para Gate, 'Cantidad' para otros...
+                # Estandarizamos cantidad de factura
+                col_qty_factura = "Qty Ordered" if "Qty Ordered" in df.columns else "Cantidad"
+                
+                if col_qty_factura in df.columns:
+                    df["Cantidad_Factura_Num"] = df[col_qty_factura].apply(clean_qty)
+                    grouped_invoice = df.groupby("Referencia_Norm")["Cantidad_Factura_Num"].sum().reset_index()
+                    grouped_invoice.rename(columns={"Cantidad_Factura_Num": "Cant. Factura"}, inplace=True)
+                    
+                    # Merge
+                    df_compare = pd.merge(grouped_invoice, grouped_products, on="Referencia_Norm", how="outer").fillna(0)
+                    
+                    # Calcular Diferencia
+                    df_compare["Diferencia"] = df_compare["Cant. Factura"] - df_compare["Cant. Declaraciones"]
+                    
+                    # Estado
+                    def get_status(row):
+                        if row["Diferencia"] == 0:
+                            return "✅ Correcto"
+                        elif row["Cant. Declaraciones"] == 0:
+                            return "⚠️ No encontrado en Decl."
+                        elif row["Diferencia"] > 0:
+                            return "❌ Sobra en Factura"
+                        else:
+                            return "❌ Falta en Factura"
+
+                    df_compare["Estado"] = df_compare.apply(get_status, axis=1)
+                    
+                    # Formatear para mostrar
+                    df_compare_display = df_compare[["Referencia_Norm", "Cant. Factura", "Cant. Declaraciones", "Diferencia", "Estado"]].copy()
+                    df_compare_display.columns = ["Referencia", "Cant. Factura", "Cant. Declaraciones", "Diferencia", "Estado"]
+                    
+                    st.dataframe(df_compare_display, use_container_width=True)
+                    
+                else:
+                    st.warning(f"No se pudo identificar la columna de cantidad en la factura. (Buscado: {col_qty_factura})")
+            
+            else:
+                st.info("Sube primero archivos de declaraciones para ver la tabla comparativa.")

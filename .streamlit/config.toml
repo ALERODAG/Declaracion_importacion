@@ -1,11 +1,10 @@
 [theme]
 base = "light"
 # Color principal (Botones, inputs activos)
-primaryColor = "#1E3A8A"
-# Color de fondo principal
-backgroundColor = "#F8FAFC"
+primaryColor = "#076af4ff"
+
 # Color de fondo secundario (Sidebar, widgets)
-secondaryBackgroundColor = "#F1F5F9"
+secondaryBackgroundColor = "#f6f20374"
 # Color del texto
-textColor = "#1E293B"
+textColor = "#0943efff"
 font = "sans serif"

@@ -17,7 +17,7 @@ def read_pdf_text(pdf_path: str) -> str:
             if t:
                 text += t + "\n"
     return text
-
+    
 
 # -----------------------------
 #   EXTRACCIÓN HEADER
@@ -52,11 +52,12 @@ def extract_product_lines(text: str):
 
     for match in line_pattern.finditer(text):
         items.append({
-            "Qty Ordered": int(match.group(1)),
-            "Description": match.group(2).strip(),
+            "Cantidad": int(match.group(1)),
+            "Description": " ".join(match.group(2).strip().split()[1:]), # Todo menos la primera palabra
+            "Referencia": match.group(2).strip().split()[0], # Primera palabra es la referencia
             "Product Number": match.group(3),
-            "Unit Price": float(match.group(4)),
-            "Total Price": float(match.group(5)),
+            "Precio_Unitario": float(match.group(4)),
+            "Valor_Total": float(match.group(5)),
         })
 
     return items

@@ -16,50 +16,50 @@ COLUMN_MAPPINGS = {
     "l/n": "Line_Number",
     "línea": "Line_Number",
     "ln": "Line_Number",
-    "codigo": "Code",
-    "código": "Code",
-    "code": "Code",
+    "codigo": "Referencia",
+    "código": "Referencia",
+    "code": "Referencia",
     "codigo 2": "Code_2",
     "código 2": "Code_2",
     "codigo2": "Code_2",
     "descripcion": "Description",
     "descripción": "Description",
     "marca": "Brand",
-    "cantidad": "Quantity",
-    "precio": "Price",
+    "cantidad": "Cantidad",
+    "precio": "Precio_Unitario",
     
     # French
     "lg": "Line_Number",
     "ligne": "Line_Number",
-    "code article": "Code",
+    "code article": "Referencia",
     "article": "Code_2",
     "libellé": "Description",
     "libelle": "Description",
-    "qté": "Quantity",
-    "qte": "Quantity",
-    "quantité": "Quantity",
+    "qté": "Cantidad",
+    "qte": "Cantidad",
+    "quantité": "Cantidad",
     "unité": "Unit",
     "unite": "Unit",
-    "prix unit": "Unit_Price",
-    "prix unit.": "Unit_Price",
-    "prix unitaire": "Unit_Price",
+    "prix unit": "Precio_Unitario",
+    "prix unit.": "Precio_Unitario",
+    "prix unitaire": "Precio_Unitario",
     "c/m": "CM",
-    "montant ht": "Amount_HT",
-    "montant": "Amount",
+    "montant ht": "Valor_Total",
+    "montant": "Valor_Total",
     
     # English
     "item": "Line_Number",
-    "parts no": "Code",
-    "parts no.": "Code",
-    "part no": "Code",
-    "part no.": "Code",
+    "parts no": "Referencia",
+    "parts no.": "Referencia",
+    "part no": "Referencia",
+    "part no.": "Referencia",
     "supply code": "Code_2",
     "description": "Description",
-    "qty": "Quantity",
-    "quantity": "Quantity",
-    "price": "Unit_Price",
-    "unit price": "Unit_Price",
-    "total": "Total",
+    "qty": "Cantidad",
+    "quantity": "Cantidad",
+    "price": "Precio_Unitario",
+    "unit price": "Precio_Unitario",
+    "total": "Valor_Total",
     "brand": "Brand",
     "order no": "Order_Number"
 }
@@ -256,7 +256,7 @@ def extraer_tabla_inteligente(pdf_path: str) -> Optional[pd.DataFrame]:
                 nombres_std = set(mapeo_columnas.values())
                 tiene_columnas_producto = any(
                     col in nombres_std 
-                    for col in ["Code", "Description", "Quantity", "Price", "Unit_Price"]
+                    for col in ["Referencia", "Description", "Cantidad", "Precio_Unitario", "Valor_Total"]
                 )
                 
                 if not tiene_columnas_producto:
@@ -277,7 +277,7 @@ def extraer_tabla_inteligente(pdf_path: str) -> Optional[pd.DataFrame]:
                                 valor = fila[idx]
                                 
                                 # Intentar convertir a número si el nombre sugiere valor numérico
-                                if nombre_columna in ["Quantity", "Unit_Price", "Price", "Total", "Amount_HT", "Amount"]:
+                                if nombre_columna in ["Cantidad", "Precio_Unitario", "Valor_Total", "Total", "Price", "Amount"]:
                                     valor = convertir_numero(valor)
                                 
                                 producto[nombre_columna] = valor
@@ -318,13 +318,13 @@ def extraer_tabla_inteligente(pdf_path: str) -> Optional[pd.DataFrame]:
                                 try:
                                     producto = {
                                         "Line_Number": match.group(1),
-                                        "Code": match.group(2),
+                                        "Referencia": match.group(2),
                                         "Code_2": match.group(3),
                                         "Description": match.group(4).strip(),
-                                        "Quantity": convertir_numero(match.group(5)),
+                                        "Cantidad": convertir_numero(match.group(5)),
                                         "Unit": match.group(6),
-                                        "Unit_Price": convertir_numero(match.group(7)),
-                                        "Amount_HT": convertir_numero(match.group(8))
+                                        "Precio_Unitario": convertir_numero(match.group(7)),
+                                        "Valor_Total": convertir_numero(match.group(8))
                                     }
                                     
                                     # Calcular Total si no existe
@@ -342,11 +342,11 @@ def extraer_tabla_inteligente(pdf_path: str) -> Optional[pd.DataFrame]:
     df = pd.DataFrame(todas_filas)
     
     # Calcular Total si no existe pero tenemos Quantity y Unit_Price
-    if "Total" not in df.columns:
-        if "Quantity" in df.columns and "Unit_Price" in df.columns:
-            df["Total"] = df["Quantity"] * df["Unit_Price"]
-        elif "Quantity" in df.columns and "Amount_HT" in df.columns:
-            df["Total"] = df["Amount_HT"]
+    if "Valor_Total" not in df.columns:
+        if "Cantidad" in df.columns and "Precio_Unitario" in df.columns:
+            df["Valor_Total"] = df["Cantidad"] * df["Precio_Unitario"]
+        elif "Cantidad" in df.columns and "Amount_HT" in df.columns:
+            df["Valor_Total"] = df["Amount_HT"]
     
     return df
 
