@@ -17,7 +17,7 @@ from  procesador_universal import procesar_factura
 st.set_page_config(
     page_title="Comparador de Importaciones",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
 # Inyectar CSS personalizado y fuentes
