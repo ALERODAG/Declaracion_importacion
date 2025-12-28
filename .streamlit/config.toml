@@ -4,7 +4,7 @@ base = "light"
 primaryColor = "#076af4ff"
 
 # Color de fondo secundario (Sidebar, widgets)
-secondaryBackgroundColor = "#f6f20374"
+secondaryBackgroundColor = "#77EAE0"
 # Color del texto
-textColor = "#0943efff"
-font = "sans serif"
+textColor = "#02100F"
+font = "Arial, sans serif"
