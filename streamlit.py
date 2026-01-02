@@ -32,9 +32,17 @@ st.markdown("""
         font-family: 'Inter', Arial, sans-serif;
     }
 
-    /* Color de fondo principal */
     .stApp {
-        background-color: #FFFFFF;
+        background-color: #DBE0EF;
+        margin: 0;
+        padding: 0.5rem;
+    }
+
+    @media (min-width: 768px) {
+        .stApp {
+            margin: 1rem;
+            padding: 1rem;
+        }
     }
     
     /* Sidebar styling */
@@ -43,7 +51,7 @@ st.markdown("""
         color: black;
     }
     section[data-testid="stSidebar"] hr {
-        border-color: #FFFFFF;
+        border-color: #1E3A8A;
     }
     section[data-testid="stSidebar"] h1, 
     section[data-testid="stSidebar"] h2, 
@@ -55,18 +63,32 @@ st.markdown("""
     /* Header Principal Personalizado */
     .main-header {
         background-color: #FFFFFF;
-        padding: 1.5rem;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        margin-bottom: 2rem;
+        padding: 1rem;
+        border-radius: 20px;
+        box-shadow: 0 4px 6px -1px rgba(255, 255, 255, 0.1);
+        margin-bottom: 1.5rem;
         border-right: 6px solid #1E3A8A;
         border-left: 6px solid #1E3A8A;
         display: flex;
+        flex-direction: column;
         align-items: center;
-        gap: 1.5rem;
+        text-align: center;
+        gap: 1rem;
     }
+
+    @media (min-width: 768px) {
+        .main-header {
+            padding: 1.5rem;
+            border-radius: 120px;
+            flex-direction: row;
+            text-align: left;
+            gap: 1.5rem;
+        }
+    }
+
     .main-header-info {
         flex-grow: 1;
+        width: 100%;
     }
     .main-header h1 {
         color: #1E3A8A;
@@ -85,14 +107,16 @@ st.markdown("""
         background-color: transparent;
     }
     .stTabs [data-baseweb="tab"] {
-        height: 50px;
+        height: 10px;
         background-color: #FFFFFF;
         border-radius: 8px 8px 0 0;
         gap: 1px;
-        padding-top: 10px;
-        padding-bottom: 10px;
+        padding-top: 5px;
+        padding-bottom: 5px;
         border: 1px solid #E2E8F0;
         transition: all 0.2s ease;
+        height: 50px;
+        width: 100%;
     }
     .stTabs [aria-selected="true"] {
         background-color: #1E3A8A !important;
@@ -102,27 +126,72 @@ st.markdown("""
 
     /* Section titles */
     h1, h2, h3 {
-        color: green !important;
-        font-weight: 600;
+        color: #8D9AA2 !important;
+        font-weight: 400;
         letter-spacing: -0.025em;
     }
     
-    /* File Uploaders in Sidebar - Improved for Light Background */
-    section[data-testid="stSidebar"] section[data-testid="stFileUploader"] {
-        background-color: #fafafa;
-        padding: 1rem;
-        border-radius: 8px;
-        border: 1px dashed #CBD5E1;
+    /* File Uploaders - Estilo Botón Profesional */
+    section[data-testid="stSidebar"] [data-testid="stFileUploader"] {
+        background-color: #FFFFFF;
+        border: 2px solid #E2E8F0;
+        border-radius: 12px;
+        padding: 1.25rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        cursor: pointer;
     }
     
-    section[data-testid="stSidebar"] section[data-testid="stFileUploader"]:hover {
-        border-color: #3B82F6;
+    section[data-testid="stSidebar"] [data-testid="stFileUploader"]:hover {
+        border-color: #1E3A8A;
+        box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.1);
+        transform: translateY(-2px);
     }
     
-    section[data-testid="stSidebar"] section[data-testid="stFileUploader"] small, 
-    section[data-testid="stSidebar"] section[data-testid="stFileUploader"] span,
-    section[data-testid="stSidebar"] section[data-testid="stFileUploader"] div {
-        color: black !important; 
+    /* Ocultar el texto de Drag & Drop y hacerlo más compacto */
+    section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] {
+        padding: 0;
+        background: transparent;
+        border: none;
+    }
+    
+    section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] > div:first-child {
+        display: none; /* Oculta el icono nube y texto drag/drop */
+    }
+
+    /* Estilizar el botón "Browse files" real */
+    section[data-testid="stSidebar"] [data-testid="stFileUploader"] button {
+        background-color: #1E3A8A !important;
+        color: white !important;
+        width: 100%;
+        border-radius: 8px !important;
+        border: none !important;
+        padding: 0.5rem 1rem !important;
+        font-weight: 600 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+        font-size: 0.8rem;
+    }
+
+    section[data-testid="stSidebar"] [data-testid="stFileUploader"] button:hover {
+        background-color: #3B82F6 !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Asegurar visibilidad de etiquetas */
+    section[data-testid="stSidebar"] [data-testid="stFileUploader"] label {
+        color: #1E3A8A !important;
+        font-weight: 700 !important;
+        margin-bottom: 0.75rem !important;
+        font-size: 0.9rem !important;
+    }
+
+    /* Estilo para el límite de tamaño */
+    section[data-testid="stSidebar"] [data-testid="stFileUploader"] small {
+        color: #64748B !important;
+        display: block;
+        margin-top: 0.5rem;
+        text-align: center;
     }
     
     /* Tables and Cards */
@@ -136,9 +205,9 @@ st.markdown("""
 
     /* Buttons */
     button[kind="primary"] {
-        background-color: #1E3A8A !important;
+        background-color: #14D9E4 !important;
         border-radius: 8px !important;
-        font-weight: 600 !important;
+        font-weight: 400 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -160,9 +229,8 @@ st.markdown(f"""
         {"<img src='data:image/png;base64," + logo_base64 + "' width='70'>" if logo_base64 else ""}
     </div>
     <div class="main-header-info">
-        <h2 style="color: #1E3A8A; font-size: 3rem;font-family: Arial, sans-serif;">Importaciones</h2>
         <p>Sube tus archivos PDF para extraer, procesar y comparar datos de importación automáticamente. 
-           <span style="font-size:0.8rem; color:#94a3b8; float:right;">v2.9.2 (UI Update)</span>
+           <br><span style="font-size:0.8rem; color:#94a3b8;">v2.9.2 (UI Update)</span>
         </p>
     </div>
 </div>
@@ -272,14 +340,14 @@ with st.sidebar:
     st.subheader("📁 Carga de Archivos")
     
     subir_declaracion = st.file_uploader(
-        "📄 Declaraciones (PDF)", 
+        "Declaraciones (PDF)", 
         type=["pdf"], 
         accept_multiple_files=True,
         help="Sube uno o varios archivos de declaración de importación"
     )
     
     subir_factura = st.file_uploader(
-        "🧾 Facturas (PDF)", 
+        "Facturas (PDF)", 
         type=["pdf"], 
         accept_multiple_files=True,
         key="facturas_sidebar",
@@ -288,14 +356,16 @@ with st.sidebar:
     
     st.markdown("---")
     if subir_declaracion:
-        st.success(f"✅ {len(subir_declaracion)} Declaraciones")
+        st.success(f"{len(subir_declaracion)} Declaraciones")
     if subir_factura:
-        st.success(f"✅ {len(subir_factura)} Facturas")
+        st.success(f"{len(subir_factura)} Facturas")
+
+
 
 # ------------------------------------------
 # MAIN AREA: Tabs
 # ------------------------------------------
-t_decl, t_fact, t_comp = st.tabs(["📄 Declaraciones", "🧾 Facturas", "⚖️ Comparativa"])
+t_decl, t_fact, t_comp = st.tabs(["Declaraciones", "Facturas", "Comparativa"])
 
 # ------------------------------------------
 # TAB 1: DECLARACIONES
@@ -481,15 +551,17 @@ with t_decl:
                 
                 nombre_base = os.path.splitext(f.name)[0]
                 st.download_button(
-                    label="📥 Descargar Declaraciones en Excel",
+                    label="Descargar Declaraciones en Excel",
                     data=buffer_decl,
                     file_name=f"{nombre_base}_declaraciones.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     key=f"download_decl_{idx}"
                 )
+
+            
             
             # with col2:
-            st.write("### 📊 Productos encontrados")
+            st.write("###Productos encontrados")
             
             # Capitalizar columnas productos visualización
             df_prod_display = df_prod.copy()
@@ -818,24 +890,24 @@ with t_comp:
                         value_name='Cantidad'
                     )
                     
-                    # Crear gráfico Altair
+                    # Crear gráfico Altair agrupado (Eficiente en espacio)
                     chart = alt.Chart(chart_melted).mark_bar().encode(
-                        x=alt.X('Fuente:N', title=None, axis=alt.Axis(labels=True)),
+                        x=alt.X('Referencia:N', title='Referencia', axis=alt.Axis(labelAngle=-45)),
                         y=alt.Y('Cantidad:Q', title='Cantidad'),
+                        xOffset='Fuente:N',
                         color=alt.condition(
                             alt.datum.Inconsistente,
-                            alt.value('#E11D48'), # Rojo (Tailwind Rose 600)
-                            alt.Color('Fuente:N', scale=alt.Scale(range=['#1E3A8A', '#60A5FA']), legend=None) # Azul
+                            alt.value('#E11D48'), # Rojo
+                            alt.Color('Fuente:N', scale=alt.Scale(range=['#1E3A8A', '#60A5FA']), legend=alt.Legend(title="Fuente"))
                         ),
-                        column=alt.Column('Referencia:N', title='Referencias (Gris: Referencia | Rojo: Inconsistencia)'),
                         tooltip=['Referencia', 'Fuente', 'Cantidad']
                     ).properties(
-                        width=60
+                        height=400
                     ).configure_view(
                         stroke='transparent'
                     )
                     
-                    st.altair_chart(chart, use_container_width=False)
+                    st.altair_chart(chart, use_container_width=True)
                     st.caption("💡 **Azul**: Cantidades coinciden | **Rojo**: Existe una diferencia entre Factura y Declaración.")
                 else:
                     st.info("No hay datos suficientes para mostrar el gráfico.")
