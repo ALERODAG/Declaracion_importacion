@@ -219,8 +219,8 @@ def get_base64(bin_file):
     return base64.b64encode(data).decode()
 
 logo_base64 = ""
-if os.path.exists("logo.png"):
-    logo_base64 = get_base64("logo.png")
+if os.path.exists("Logo.png"):
+    logo_base64 = get_base64("Logo.png")
 
 # Header visible en la app
 st.markdown(f"""
@@ -332,8 +332,8 @@ def guardar_excel_por_pdf(nombre_pdf, df_decl, df_prod):
 # SIDEBAR: Carga de Archivos
 # ------------------------------------------
 with st.sidebar:
-    if os.path.exists("logo.png"):
-        st.image("logo.png")
+    if os.path.exists("Logo.png"):
+        st.image("Logo.png")
     else:
         st.title("ImportApp")
     st.markdown("---")
@@ -537,9 +537,9 @@ with t_decl:
             
             # Mostrar solo columnas seleccionadas
             if columnas_decl_seleccionadas:
-                st.dataframe(df_display_final[columnas_decl_seleccionadas], use_container_width=True)
+                st.dataframe(df_display_final[columnas_decl_seleccionadas], width="stretch")
             else:
-                st.dataframe(df_display_final, use_container_width=True)
+                st.dataframe(df_display_final, width="stretch")
             
             # Botón de descarga para declaraciones (usa el DF original sin capitalizar headers si así se desea, o capitalizado?)
             if not df_decl.empty:
@@ -617,7 +617,7 @@ with t_decl:
             try:
                 event = st.dataframe(
                     df_view,
-                    use_container_width=True,
+                    width="stretch",
                     on_select="rerun",
                     selection_mode="single-row",
                     key=f"df_prod_sel_{idx}"
@@ -659,7 +659,7 @@ with t_decl:
 
             except TypeError:
                 # Fallback para versiones anteriores
-                st.dataframe(df_view, use_container_width=True)
+                st.dataframe(df_view, width="stretch")
                 st.info("ℹ️ Actualiza Streamlit para habilitar la edición de observaciones.")
             
             # Botón de descarga para productos
@@ -736,7 +736,7 @@ with t_fact:
             # MOSTRAR DATA FRAME DE FACTURAS
             st.write("---")
             st.write("### 🧾 Detalle de Facturas (Items)")
-            st.dataframe(df_total_invoices, use_container_width=True)
+            st.dataframe(df_total_invoices, width="stretch")
             
             # Agrupar por Referencia
             df_total_invoices['Description'] = df_total_invoices['Description'].astype(str) if 'Description' in df_total_invoices.columns else "S/D"
@@ -846,7 +846,7 @@ with t_comp:
                 "Cant. Factura": "{:,.0f}",
                 "Cant. Decl": "{:,.0f}",
                 "Diff_Cant": "{:,.0f}"
-            }), use_container_width=True)
+            }), width="stretch")
 
             # Botón de descarga para el comparativo
             if not df_compare.empty:
@@ -907,7 +907,7 @@ with t_comp:
                         stroke='transparent'
                     )
                     
-                    st.altair_chart(chart, use_container_width=True)
+                    st.altair_chart(chart, width="stretch")
                     st.caption("💡 **Azul**: Cantidades coinciden | **Rojo**: Existe una diferencia entre Factura y Declaración.")
                 else:
                     st.info("No hay datos suficientes para mostrar el gráfico.")
