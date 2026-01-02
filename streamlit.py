@@ -10,8 +10,14 @@ import base64
 from main_simple import extraer_texto_pdf, separar_declaraciones, limpiar_lineas
 from main_simple import localizar_template  # for template search logic
 from productos import ProductExtractor
-from  procesador_universal import procesar_factura
+from procesador_universal import procesar_factura
 import altair as alt
+
+# Nuevos módulos refactorizados
+from utils.formatting import convertir_numero, formatear_numero
+from utils.templating import cargar_plantilla
+from utils.pdf_orchestrator import procesar_pdf_filelike, guardar_excel_por_pdf
+from utils.comparador import normalizar_df_referencia, get_status_comparativo
 
 # ------------------------------------------
 # CONFIGURACION DE PAGINA Y ESTILOS
@@ -238,88 +244,15 @@ st.markdown(f"""
 
 
 # ------------------------------------------
-# CONFIG: template path (auto‑fallback-ready)
+# CONFIG: template path (auto‑fallback-ready) - MOVIDO A utils/templating.py
 # ------------------------------------------
-TEMPLATE_CANDIDATES = [
-    os.path.join(os.getcwd(), "RESULTADO_FORMATO_DECLARACION.xlsx"),
-    os.path.join(os.getcwd(), "plantillas", "RESULTADO_FORMATO_DECLARACION.xlsx"),
-]
-
-def cargar_plantilla():
-    """Carga la plantilla desde varias rutas posibles."""
-    for path in TEMPLATE_CANDIDATES:
-        if os.path.exists(path):
-            return pd.read_excel(path)
-    raise FileNotFoundError("No se encontró la plantilla en rutas alternativas.")
 
 # ------------------------------------------
-# Procesar un PDF “file-like“
+# SIDEBAR: Carga de Archivos
 # ------------------------------------------
-def procesar_pdf_filelike(file):
-    """Ejecuta la lógica de main_simple con un archivo subido por Streamlit."""
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-        tmp.write(file.read())
-        temp_path = tmp.name
 
-    # Extraer texto completo
-    texto = extraer_texto_pdf(temp_path)
-    # print(texto) # DEBUG removed for production
-    declaraciones = separar_declaraciones(texto)
 
- 
-    
-    
-    # Cargar plantilla real
-    plantilla = cargar_plantilla()
-    headers = plantilla.columns.tolist()
 
-    # Crear filas según plantilla
-    decl_rows = []
-    for decl in declaraciones:
-        líneas = limpiar_lineas(decl["contenido"])
-        fila = [None] * len(headers)
-        for i in range(min(len(headers), len(líneas))):
-            fila[i] = líneas[i]
-        decl_rows.append(fila)
-
-    df_decl = pd.DataFrame(decl_rows, columns=headers).dropna(axis=1, how="all")
-    df_decl["Archivo"] = file.name
-
-    #*******************************************************
-    # Extraer productos usando script productos.py
-    #*******************************************************
-    extractor = ProductExtractor()
-    
-
- 
-    try:
-        df_prod = extractor.extract_products_from_text(texto, file.name)
-        if df_prod is None:
-            df_prod = pd.DataFrame()
-    except Exception as e:
-        st.error(f"Error extrayendo productos: {e}")
-        df_prod = pd.DataFrame()
-
-    return df_decl, df_prod, texto
-
-# ------------------------------------------
-# Guardar Excel igual que main_simple
-# ------------------------------------------
-def guardar_excel_por_pdf(nombre_pdf, df_decl, df_prod):
-    folder = os.path.join(os.getcwd(), "PDF_A_LEER", "EXCEL_PDF_LEIDOS")
-    os.makedirs(folder, exist_ok=True)
-
-    # Usar splitext para manejar .pdf y .PDF correctamente
-    nombre_base = os.path.splitext(nombre_pdf)[0]
-    excel_path = os.path.join(folder, f"{nombre_base}.xlsx")
-
-    # with pd.ExcelWriter(excel_path, engine="openpyxl") as writer:
-    #     if not df_decl.empty:
-    #         df_decl.to_excel(writer, sheet_name="Declaraciones", index=False)
-    #     if not df_prod.empty:
-    #         df_prod.to_excel(writer, sheet_name="Productos", index=False)
-
-    # return excel_path
 
 
 
@@ -415,72 +348,9 @@ with t_decl:
             df_prod = data_stored["prod"]
             texto = data_stored["text"]
 
-            # Función para convertir correctamente los números (Lógica robusta)
-            import re
-            def convertir_numero(valor):
-                if pd.isna(valor) or valor == "" or valor is None:
-                    return None
-                
-                s = str(valor).strip()
-                # Dejar solo dígitos, puntos, comas y signo menos
-                s = re.sub(r'[^\d.,-]', '', s)
-                if not s: return None
-
-                last_comma = s.rfind(',')
-                last_point = s.rfind('.')
-
-                try:
-                    # Caso A: No hay separadores -> Entero
-                    if last_comma == -1 and last_point == -1:
-                        return float(s)
-
-                    # Caso B: Punto está después de coma (o no hay coma) -> Formato 1,234.56
-                    # El punto es el decimal.
-                    if last_point > last_comma:
-                        # Eliminar todas las comas (separadores de miles)
-                        clean_s = s.replace(',', '')
-                        # Asegurar que solo hay un punto (el último)
-                        # Si input era 1.234.567.89 -> 1234567.89
-                        # Split por punto
-                        parts = clean_s.split('.')
-                        if len(parts) > 2:
-                            # Unir todo menos el último decimal
-                            integer_part = "".join(parts[:-1])
-                            decimal_part = parts[-1]
-                            clean_s = f"{integer_part}.{decimal_part}"
-                        
-                        return float(clean_s)
-                    
-                    # Caso C: Coma está después de punto (o no hay punto) -> Formato 1.234,56
-                    # La coma es el decimal.
-                    else: 
-                         # Eliminar todos los puntos (separadores de miles)
-                        clean_s = s.replace('.', '')
-                        # Reemplazar la coma decimal por punto para Python
-                        parts = clean_s.split(',')
-                        if len(parts) > 2:
-                            integer_part = "".join(parts[:-1])
-                            decimal_part = parts[-1]
-                            # Reemplazar ultima coma por punto
-                            clean_s = f"{integer_part}.{decimal_part}"
-                        else:
-                            clean_s = clean_s.replace(',', '.')
-                        
-                        return float(clean_s)
-
-                except (ValueError, TypeError):
-                    return None
+            # Lógica de conversión de números movida a utils/formatting.py
             
-            # Función para formatear números
-            def formatear_numero(valor):
-                if pd.isna(valor) or valor is None:
-                    return ""
-                try:
-                    num = float(valor)
-                    # Formato solicitado: decimales con punto
-                    return f"{num:,.2f}" # 1,234.56
-                except (ValueError, TypeError):
-                    return str(valor) if valor else ""
+            # Función de formateo movida a utils/formatting.py
             
             # Aplicar conversión a columnas numéricas probables
             columnas_numericas = []
@@ -705,11 +575,8 @@ with t_fact:
                 # Usar cache o procesar
                 df = procesar_factura(temp_path)
                 if df is not None and not df.empty:
-                    # Normalización de referencia
-                    if "Referencia" in df.columns:
-                        df["Referencia_Norm"] = df["Referencia"].astype(str).str.strip().str.upper().str.split('/').str[0]
-                    else:
-                         df["Referencia_Norm"] = "S/R"
+                    # Normalización de referencia (Movido a utils/comparador.py)
+                    df = normalizar_df_referencia(df, "Referencia")
 
                     # Asegurar columnas numéricas
                     for col in ['Cantidad', 'Valor_Total', 'Precio_Unitario']:
@@ -798,11 +665,8 @@ with t_comp:
         if all_products_list and df_consolidado is not None:
             df_decl_total = pd.concat(all_products_list, ignore_index=True)
             
-            # Normalizar Declaraciones
-            if "Referencia" in df_decl_total.columns:
-                df_decl_total["Referencia_Norm"] = df_decl_total["Referencia"].astype(str).str.strip().str.upper().str.split('/').str[0]
-            else:
-                df_decl_total["Referencia_Norm"] = "S/R"
+            # Normalizar Declaraciones (Movido a utils/comparador.py)
+            df_decl_total = normalizar_df_referencia(df_decl_total, "Referencia")
             
             df_decl_total["Cantidad"] = pd.to_numeric(df_decl_total["Cantidad"], errors='coerce').fillna(0)
             df_decl_grouped = df_decl_total.groupby("Referencia_Norm", as_index=False).agg({'Cantidad': 'sum'})
@@ -819,14 +683,8 @@ with t_comp:
             # Cálculos de Diferencias
             df_compare["Diff_Cant"] = df_compare.get("Cantidad", 0) - df_compare["Cant_Decl"]
             
-            # Estado
-            def get_status(row):
-                if row["Diff_Cant"] == 0: return "✅ OK"
-                if row["Cant_Decl"] == 0: return "⚠️ No en Decl"
-                if row["Diff_Cant"] > 0: return f"❌ Sobra Fact ({row['Diff_Cant']:.0f})"
-                return f"❌ Falta Fact ({abs(row['Diff_Cant']):.0f})"
-
-            df_compare["Estado"] = df_compare.apply(get_status, axis=1)
+            # Estado (Movido a utils/comparador.py)
+            df_compare["Estado"] = df_compare.apply(get_status_comparativo, axis=1)
             
             # Formatear para display
             rename_display = {
