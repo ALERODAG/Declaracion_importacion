@@ -14,3 +14,4 @@ xlrd
 lxml
 beautifulsoup4
 regex
+altair
