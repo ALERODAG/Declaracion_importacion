@@ -11,10 +11,10 @@ font = "Arial, sans serif"
 # Configuración del servidor para acceso remoto y recarga automática
 [server]
 runOnSave = true
-headless = false
+headless = true
 enableCORS = false
 enableXsrfProtection = false
-address = "localhost"
+address = "0.0.0.0"
 
 [browser]
 gatherUsageStats = false
