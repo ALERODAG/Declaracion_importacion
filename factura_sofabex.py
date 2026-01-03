@@ -35,14 +35,14 @@ def extraer_lineas(pdf_path):
 #   Detección formato (simple)
 # -----------------------------
 def detectar_formato(lineas):
-    texto = " ".join([" ".join(w["text"] for w in ln) for ln in lineas])
-    if "Cantidad" in texto or "TENSOR" in texto:
+    texto = " ".join([" ".join(w["text"] for w in ln) for ln in lineas]).upper()
+    if "SOFABEX" in texto:
         return "es"
     if "ITEM" in texto:
         return "en"
-    if "Libellé" in texto:
+    if "LIBELLÉ" in texto:
         return "fr"
-    return "es"
+    return None # No es Sofabex si no dice SOFABEX
 
 
 # -----------------------------

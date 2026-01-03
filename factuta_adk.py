@@ -1,63 +1,30 @@
 # =============================
-#   factuta_adk.py (MODULAR)
+# factura_adk.py (UNIVERSAL)
 # =============================
 
 import pdfplumber
 import pandas as pd
 import re
 
+# Marcas conocidas (puedes ampliar)
 MARCAS = ["GMB", "NSK", "KOYO", "SKF", "FAG"]
 
-pat_inicio = re.compile(r"^(?P<item>\d{1,3})\s+(?P<codigo>[A-Za-z0-9\-\/]+)")
-pat_fin = re.compile(
-    r"(?P<marca>{})\s+(?P<cantidad>\d+)\s+(?P<precio>\d+,\d+)".format("|".join(MARCAS))
+# Inicio de producto: LN + Código
+PAT_INICIO = re.compile(
+    r"^(?P<ln>\d{1,4})\s+(?P<ref>[A-Z0-9\-\/]+)"
+)
+
+# Fin de producto: Marca + Cantidad + Precio
+PAT_FIN = re.compile(
+    rf"(?P<marca>{'|'.join(MARCAS)})\s+(?P<cantidad>\d+)\s+(?P<precio>\d+,\d+)"
 )
 
 
-def detect_product_end(line):
-    return bool(pat_fin.search(line))
-
-
-def process_block(block, pdf_path, rows):
-    full = " ".join(block)
-
-    ini = pat_inicio.search(full)
-    fin = pat_fin.search(full)
-
-    if not ini or not fin:
-        return
-
-    item = ini.group("item")
-    codigo = ini.group("codigo")
-
-    marca = fin.group("marca")
-    cantidad = int(fin.group("cantidad"))
-    precio = float(fin.group("precio").replace(",", "."))
-
-    mid = full[ini.end():fin.start()].strip()
-
-    partes = mid.split(" ", 1)
-    codigo2 = partes[0] if len(partes) > 1 and re.match(r"^[A-Za-z0-9\-\/]+$", partes[0]) else ""
-    descripcion = partes[1] if len(partes) > 1 else mid
-
-    rows.append({
-        "Line_Number": item,
-        "Referencia": codigo,
-        "Code_2": codigo2,
-        "Description": descripcion.strip(),
-        "Brand": marca,
-        "Cantidad": cantidad,
-        "Precio_Unitario": precio,
-        "Valor_Total": round(cantidad * precio, 2)
-    })
-
-
-def procesar_factura_adk(pdf_path: str):
+def procesar_factura_adk(pdf_path: str) -> pd.DataFrame | None:
     rows = []
+    bloque = []
 
     with pdfplumber.open(pdf_path) as pdf:
-        block = []
-
         for page in pdf.pages:
             text = page.extract_text()
             if not text:
@@ -66,24 +33,100 @@ def procesar_factura_adk(pdf_path: str):
             for line in text.split("\n"):
                 line = line.strip()
 
-                if pat_inicio.match(line):
-                    if block:
-                        process_block(block, pdf_path, rows)
-                        block = []
-                    block.append(line)
+                # 1️⃣ Detectar inicio de nuevo producto
+                if PAT_INICIO.match(line):
+                    if bloque:
+                        _procesar_bloque(bloque, rows)
+                        bloque = []
+                    bloque.append(line)
+                    # No hacemos continue, permitimos que PAT_FIN verifique si está en la misma línea
 
-                else:
-                    if block:
-                        block.append(line)
+                # 2️⃣ Acumular líneas intermedias o verificar fin
+                elif bloque:
+                    bloque.append(line)
 
-                    if block and detect_product_end(line):
-                        process_block(block, pdf_path, rows)
-                        block = []
+                # 3️⃣ Detectar fin del producto (siempre que haya un bloque abierto)
+                if bloque and PAT_FIN.search(line):
+                    _procesar_bloque(bloque, rows)
+                    bloque = []
 
-        if block:
-            process_block(block, pdf_path, rows)
+        # Cierre final
+        if bloque:
+            _procesar_bloque(bloque, rows)
 
     if not rows:
         return None
 
     return pd.DataFrame(rows)
+
+
+def _procesar_bloque(bloque: list[str], rows: list[dict]):
+    texto = " ".join(bloque)
+
+    ini = PAT_INICIO.search(texto)
+    fin = PAT_FIN.search(texto)
+
+    if not ini or not fin:
+        return
+
+    ln = int(ini.group("ln"))
+    referencia = ini.group("ref")
+
+    marca = fin.group("marca")
+    cantidad = int(fin.group("cantidad"))
+    precio = float(fin.group("precio").replace(",", "."))
+
+    # Texto intermedio (códigos + descripción)
+    cuerpo = texto[ini.end():fin.start()].strip()
+    partes = cuerpo.split(" ", 1)
+    
+    code_2 = ""
+    descripcion = cuerpo
+
+    if len(partes) == 2 and re.fullmatch(r"[A-Z0-9\-\/]+", partes[0]):
+        code_2 = partes[0]
+        descripcion = partes[1]
+
+    rows.append({
+        "LN": ln,
+        "Referencia": referencia,
+        "Code_2": code_2,
+        "Description": descripcion.strip(),
+        "Brand": marca,
+        "Cantidad": cantidad,
+        "Precio_Unitario": precio,
+        "Valor_Total": round(cantidad * precio, 2),
+    })
+
+if __name__ == "__main__":
+    import os
+    # Ruta específica proporcionada por el usuario + rutas habituales
+    ruta_usuario = r"C:\Users\asus\Documents\FACTURA YADAS WT IMPORTACIONES F2510-04037.pdf"
+    possible_paths = [ruta_usuario, "facturas_pdf", "PDF_A_LEER", "."]
+    test_pdf = None
+    
+    print("🔍 Buscando un PDF para probar...")
+    for p in possible_paths:
+        if os.path.exists(p):
+            if p.lower().endswith(".pdf"):
+                test_pdf = p
+                break
+            else:
+                pdfs = [f for f in os.listdir(p) if f.lower().endswith(".pdf")]
+                if pdfs:
+                    test_pdf = os.path.join(p, pdfs[0])
+                    break
+    
+    if test_pdf:
+        print(f"🚀 Procesando: {test_pdf}")
+        df = procesar_factura_adk(test_pdf)
+        if df is not None:
+            print("\n✅ DATOS EXTRAÍDOS:")
+            print("="*100)
+            print(df.to_string(index=False))
+            print("="*100)
+            print(f"Total de líneas extraídas: {len(df)}")
+        else:
+            print("❌ No se pudo extraer información del PDF.")
+    else:
+        print("⚠️ No se encontró el PDF en la ruta de Documentos ni en carpetas locales.")

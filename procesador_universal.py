@@ -17,9 +17,9 @@ def procesar_factura(pdf_path):
         DataFrame con productos o None si ningún parser funciona
     """
     for parser in [
+        procesar_factura_adk,        # ESPECÍFICO (ADK prioritario)
         procesar_factura_gate,       # ESPECÍFICO
         procesar_factura_sofabex,    # ESPECÍFICO
-        procesar_factura_adk,        # ESPECÍFICO
         procesar_factura_universal,  # GENÉRICO (Fallback)
     ]:
         try:
